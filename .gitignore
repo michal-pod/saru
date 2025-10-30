@@ -1,0 +1,8 @@
+*~
+build*/
+subprojects/googletest*/
+subprojects/packagecache/
+subprojects/.wraplock
+generators*/
+.vscode/settings.json
+installer/*.pdf

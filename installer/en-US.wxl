@@ -1,0 +1,4 @@
+<WixLocalization Culture="en-US" ExtensionDefaultCulture="yes" Codepage="1252" xmlns="http://wixtoolset.org/schemas/v4/wxl">
+    <String Id="VCRedistNotInstalled_Title" Value="{\WixUI_Font_Bigger}[ProductName] Missing Visual C++ Redistributable" />
+    <String Id="VCRedistNotInstalled_Description" Value="The required Visual C++ Redistributable is not installed. Please install it from the link below then restart the installer." />
+</WixLocalization>

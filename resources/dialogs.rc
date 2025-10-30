@@ -1,0 +1,199 @@
+// dialogs.rc
+// Ten plik jest automatycznie generowany przez RisohEditor 5.9.2.
+// † <-- Ten sztylet (dagger), pomaga w wykrywaniu UTF-8.
+//////////////////////////////////////////////////////////////////////////////
+
+#include "resource.h"
+
+//////////////////////////////////////////////////////////////////////////////
+// Wygenerowano z TEXTINCLUDE 2
+
+#define APSTUDIO_HIDDEN_SYMBOLS
+#include <windows.h>
+#include <commctrl.h>
+#undef APSTUDIO_HIDDEN_SYMBOLS
+
+//////////////////////////////////////////////////////////////////////////////
+
+#pragma code_page(65001) // UTF-8
+
+//////////////////////////////////////////////////////////////////////////////
+
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+
+//////////////////////////////////////////////////////////////////////////////
+
+LANGUAGE LANG_ENGLISH, SUBLANG_DEFAULT
+
+//////////////////////////////////////////////////////////////////////////////
+// RT_MENU
+
+IDR_TRAY_MENU MENU
+{
+    POPUP "&File"
+    {
+        MENUITEM "E&xit\tAlt+F4", IDC_APP_ICON
+    }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// RT_DIALOG
+
+IDD_KEY_LIST DIALOG 0, 0, 470, 280
+CAPTION "Loaded SSH keys list"
+STYLE DS_CENTER | DS_MODALFRAME | WS_POPUPWINDOW | WS_CAPTION
+FONT 9, "Segoe UI"
+{
+    CONTROL "", IDC_KEY_LIST, "SysListView32", WS_BORDER, 10, 10, 450, 90
+    EDITTEXT IDC_COPY_PUB_ID_TEXT, 10, 105, 370, 14, WS_DISABLED
+    PUSHBUTTON "Copy", IDC_COPY_PUB_ID, 390, 105, 70, 14
+    GROUPBOX "Key constrains", -1, 10, 130, 450, 120
+    AUTOCHECKBOX "Ask for confirmation on every usage", IDC_REQUIRE_CONFIRMATION, 20, 145, 120, 10
+    LTEXT "Will expire in..", IDC_KEY_TIMEOUT, 29, 160, 120, 10
+    CONTROL "", IDC_KEY_CONSTRAINS, "SysListView32", WS_BORDER, 20, 175, 370, 70
+    PUSHBUTTON "Load", IDC_DEST_CONS_LOAD, 400, 175, 55, 14
+    PUSHBUTTON "Clear", IDC_DEST_CONS_CLEAR, 400, 194, 55, 14
+    DEFPUSHBUTTON "Close", IDCANCEL, 390, 260, 70, 14
+    ICON 0, IDC_KEY_TIMEOUT_ICON, 20, 160, 0, 0
+}
+
+IDD_KEY_CONFIRM DIALOGEX 0, 0, 340, 140
+CAPTION "SSH Key Confirmation"
+STYLE DS_MODALFRAME | WS_POPUPWINDOW | WS_CAPTION
+FONT 9, "Segoe UI", 0, 0, 1
+{
+    DEFPUSHBUTTON "Deny", IDCANCEL, 200, 120, 60, 14
+    PUSHBUTTON "Allow", IDOK, 265, 120, 60, 14
+    ICON 0, IDC_APP_ICON, 10, 10, 0, 0
+    LTEXT "", IDC_HEADER_LINE, 50, 10, 270, 10
+    LTEXT "Do you allow access to this key?", -1, 50, 22, 270, 10
+    CONTROL "", -1, "STATIC", SS_ETCHEDHORZ, 10, 36, 320, 1
+    ICON 0, IDC_ICON_KEY, 10, 40, 0, 0
+    LTEXT "Key:", -1, 30, 40, 50, 10
+    LTEXT "", IDC_KEY_INFO, 85, 40, 240, 10
+    ICON 0, IDC_ICON_FINGERPRINT, 10, 56, 0, 0
+    LTEXT "Fingerprint:", -1, 30, 56, 50, 10
+    LTEXT "", IDC_FINGERPRINT, 85, 56, 240, 10
+    ICON 0, IDC_EXTRA_LINE1_ICON, 10, 72, 0, 0
+    LTEXT "E1:", IDC_EXTRA_LINE1_LABEL, 30, 72, 50, 10
+    LTEXT "", IDC_EXTRA_LINE1_VALUE, 85, 72, 240, 10
+    ICON 0, IDC_EXTRA_LINE2_ICON, 10, 88, 0, 0
+    LTEXT "E2:", IDC_EXTRA_LINE2_LABEL, 30, 88, 50, 10
+    LTEXT "", IDC_EXTRA_LINE2_VALUE, 85, 88, 240, 10
+    COMBOBOX IDC_TIME_COMBO, 119, 104, 70, 100, CBS_DROPDOWNLIST | WS_TABSTOP
+    AUTOCHECKBOX "Don't as againt for:", IDC_REMEMBER_CHECK, 10, 104, 100, 10
+}
+
+IDD_ABOUT DIALOGEX 0, 0, 250, 184
+CAPTION "About"
+STYLE WS_POPUPWINDOW | WS_CAPTION
+FONT 9, "Segoe UI", 0, 0, 1
+{
+    ICON IDI_ICON1, -1, 10, 10, 0, 0
+    LTEXT "Opis programu", IDC_ABOUT_DESCRIPTION, 40, 10, 180, 40
+    CONTROL "", IDC_ABOUT_TAB, "SysTabControl32", TCS_FLATBUTTONS | WS_CLIPSIBLINGS | WS_CLIPCHILDREN | WS_TABSTOP, 10, 60, 230, 12
+    EDITTEXT IDC_ABOUT_CONTENT, 10, 72, 230, 80, ES_READONLY | ES_AUTOVSCROLL | ES_MULTILINE | WS_VSCROLL
+    DEFPUSHBUTTON "OK", IDOK, 195, 160, 50, 14
+}
+
+IDD_KEY_SELECTION DIALOGEX 0, 0, 340, 156
+CAPTION "SSH Key selection"
+STYLE DS_MODALFRAME | WS_POPUPWINDOW | WS_CAPTION
+FONT 9, "Segoe UI", 0, 0, 1
+{
+    DEFPUSHBUTTON "Select", IDOK, 275, 136, 60, 14
+    PUSHBUTTON "Cancel", IDCANCEL, 210, 136, 60, 14
+    ICON 0, IDC_APP_ICON, 10, 10, 0, 0
+    LTEXT "", IDC_HEADER_LINE, 50, 10, 270, 10
+    LTEXT "Please select key:", -1, 50, 22, 270, 10
+    CONTROL "", -1, "STATIC", SS_ETCHEDHORZ, 5, 36, 330, 1
+    CONTROL "", IDC_KEY_LIST, "SysListView32", WS_BORDER, 5, 41, 330, 90
+}
+
+IDD_SETTINGS_HYPERV DIALOGEX 0, 0, 250, 180
+STYLE WS_CHILD | WS_DISABLED | WS_CAPTION
+FONT 9, "Segoe UI", 0, 0, 1
+{
+    CONTROL "", IDC_HYPERV_LIST, "SysListView32", LVS_SHOWSELALWAYS | LVS_SINGLESEL | LVS_REPORT | WS_BORDER | WS_TABSTOP, 5, 5, 240, 151
+    PUSHBUTTON "Rescan", IDC_HV_RESCAN, 185, 161, 60, 14
+    PUSHBUTTON "Delete", IDC_HV_DELETE, 120, 161, 60, 14
+    PUSHBUTTON "Add", IDC_HV_ADD, 55, 161, 60, 14
+}
+
+IDD_SETTINGS_INTEGRATION DIALOGEX 0, 0, 250, 180
+STYLE WS_CHILD | WS_DISABLED | WS_CAPTION
+FONT 9, "Segoe UI", 0, 0, 1
+{
+    AUTOCHECKBOX "Launch at Windows startup", IDC_AUTO_START, 10, 10, 200, 10
+    AUTOCHECKBOX "Enable Pageant compatibility", IDC_PAGEANT_MODE, 10, 24, 200, 10
+    AUTOCHECKBOX "Enable Windows OpenSSH compatibility", IDC_NAMED_PIPE, 10, 38, 200, 10
+    AUTOCHECKBOX "Enable Hyper-V integration", IDC_HYPERV_INTEGRATION, 10, 52, 200, 10
+    AUTOCHECKBOX "Enable debug console", IDC_ENABLE_DEBUG_CONSOLE, 10, 66, 200, 10
+    COMBOBOX IDC_DEBUG_LEVEL, 140, 82, 60, 100, CBS_DROPDOWNLIST | WS_TABSTOP
+    LTEXT "Debug level", -1, 20, 82, 100, 10
+}
+
+IDD_SETTINGS_NOTIFICATION DIALOGEX 0, 0, 250, 180
+STYLE WS_CHILD | WS_DISABLED | WS_CAPTION
+FONT 9, "Segoe UI", 0, 0, 1
+{
+    AUTOCHECKBOX "Show notifications on key usage", IDC_NOTIFY_KEY_USAGE, 10, 10, 200, 10
+    AUTOCHECKBOX "Notify on key operations", IDC_NOTIFY_KEY_OPERATIONS, 10, 24, 200, 10
+    AUTOCHECKBOX "Notify when key operation is declined", IDC_NOTIFY_KEY_DECLINE, 10, 38, 200, 10
+    AUTOCHECKBOX "Require confirmation for every use", IDC_ALWAYS_CONFIRM, 10, 52, 200, 10
+    AUTOCHECKBOX "Show key selection when multiple keys are available", IDC_SHOW_KEY_SELECTION, 10, 66, 200, 10
+    AUTOCHECKBOX "Auto-decline request after 30 seconds", IDC_AUTO_DECLINE, 10, 80, 200, 10
+    AUTOCHECKBOX "Force notification on top", IDC_FORCE_ON_TOP, 10, 94, 200, 10
+}
+
+IDD_ADD_VM DIALOG 0, 0, 197, 97
+CAPTION "Add VM"
+STYLE DS_CENTER | DS_MODALFRAME | WS_POPUPWINDOW | WS_CAPTION
+FONT 9, "Segoe UI"
+{
+    DEFPUSHBUTTON "Add", IDOK, 67, 78, 60, 14
+    PUSHBUTTON "Cancel", IDCANCEL, 132, 78, 60, 14
+    LTEXT "Name:", -1, 5, 5, 32, 14
+    LTEXT "GUID:", -1, 5, 19, 32, 14
+    EDITTEXT IDC_VM_NAME, 42, 5, 150, 14
+    EDITTEXT IDC_VM_GUID, 42, 19, 150, 14
+    LTEXT "", IDC_VALIDATION_STATUS, 42, 38, 150, 30
+}
+
+//////////////////////////////////////////////////////////////////////////////
+// TEXTINCLUDE
+
+LANGUAGE LANG_NEUTRAL, SUBLANG_NEUTRAL
+
+#ifdef APSTUDIO_INVOKED
+
+1 TEXTINCLUDE
+{
+    "resource.h\0"
+}
+
+2 TEXTINCLUDE
+{
+    "#define APSTUDIO_HIDDEN_SYMBOLS\r\n"
+    "#include <windows.h>\r\n"
+    "#include <commctrl.h>\r\n"
+    "#undef APSTUDIO_HIDDEN_SYMBOLS\r\n"
+    "\0"
+}
+
+3 TEXTINCLUDE
+{
+    "\r\n"
+    "\0"
+}
+
+#endif // def APSTUDIO_INVOKED
+
+//////////////////////////////////////////////////////////////////////////////
+// Wygenerowano z TEXTINCLUDE 3
+
+#ifndef APSTUDIO_INVOKED
+
+#endif // ndef APSTUDIO_INVOKED
+
+//////////////////////////////////////////////////////////////////////////////

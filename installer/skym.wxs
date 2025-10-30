@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs" xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
+  xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  <?include Predefines.wxi?>
+
+  <Package Id="$(var.Manufacturer)_$(var.AppName)_$(var.Platform)" Name="$(var.PackageName)"
+    Manufacturer="$(var.Manufacturer)" UpgradeCode="$(var.UpgradeCode)"
+    Version="$(var.ProductVersion)" Scope="perMachine">
+
+    <!-- Embed cab files -->
+    <MediaTemplate EmbedCab="yes" />
+
+    <!-- Set reinstall mode to always reinstall all files -->
+    <Property Id="REINSTALLMODE" Value="amus" />
+
+    <!-- Action to log error message in silent install mode -->
+    <CustomAction Id="VCNotInstalled"
+      Error="This installer requires the Microsoft Visual C++ 2022 Runtime to be installed. Please install the runtime and re-run this installer." />
+
+    <!--
+      License and new banners
+      This is build is running from meson and the paths are relative to build root
+    -->
+    <WixVariable Id="WixUILicenseRtf" Value="../installer/gpl-3.0.rtf" />
+    <WixVariable Id="WixUIDialogBmp" Value="../installer/dialog.bmp" />
+    <WixVariable Id="WixUIBannerBmp" Value="../installer/banner.bmp" />
+    <Property Id="ApplicationFolderName" Value="$(var.AppName)" />
+
+    <!-- Installer icons -->
+    <Icon Id="icon.ico" SourceFile="../resources/app.ico" />
+    <Property Id="ARPPRODUCTICON" Value="icon.ico" />
+
+    <!-- Detect windows version and VC runtime -->
+    <?include WindowsDetection.wxi?>
+    <?include VCRuntimeDetection.wxi?>
+
+
+    <!-- Directories -->
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="SKYM" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationProgramsFolder" Name="$(var.StartupMenuName)" />
+    </StandardDirectory>
+
+
+    <!-- Main component -->
+    <ComponentGroup Id="Components" Directory="INSTALLFOLDER">
+      <Component Guid="$(var.ProductComponentGUID)">
+        <!-- Registry KeyPath required for non-advertised shortcuts per ICE43 -->
+        <!-- Even for per-machine installs, non-advertised shortcuts require HKCU KeyPath -->
+        <RegistryValue Root="HKCU" Key="Software\$(var.AppName)" Name="installed" Type="integer"
+          Value="1" KeyPath="yes" />
+
+        <!-- Main executable and start menu folder -->
+        <File Id="SKYMExecutable" Source="$(var.SKYMExe)"
+          Checksum="yes" />
+        <Shortcut Id="ApplicationStartMenuShortcut" Directory="ApplicationProgramsFolder"
+          Advertise="no" Name="SKYM" WorkingDirectory="INSTALLFOLDER"
+          Description="SKYM - SSH Key Manager" Target="[#SKYMExecutable]"
+        />
+
+        <!-- Documentation -->
+        <File Id="SKYMHelpFile" Source="../installer/skym-sshkeymanager.pdf" />
+        <Shortcut Id="HelpShortcut"
+          Name="SKYM Documentation"
+          Description="SKYM Documentation"
+          Target="[#SKYMHelpFile]"
+          WorkingDirectory="INSTALLFOLDER"
+          Directory="ApplicationProgramsFolder" />
+
+        <!-- Helpers -->
+        <File Source="$(var.SKYMNPPExe)" Checksum="yes" />
+
+        <File Source="$(var.SKYMHVHExe)" Checksum="yes" />
+
+        <File Source="$(var.SKYKDCCExe)" Checksum="yes" />
+
+        <!-- Remove folders-->
+        <RemoveFolder Id="INSTALLFOLDER" On="uninstall" />
+        <RemoveFolder Id="ApplicationProgramsFolder" Directory="ApplicationProgramsFolder"
+          On="uninstall" />
+      </Component>
+
+      <!-- Hyper-V integration -->
+      <Component Id="PerMachineRegistry" Guid="9D735C86-ADCE-448C-A888-726A175631A3"
+        Directory="INSTALLFOLDER">
+        <RegistryValue Root="HKLM"
+          Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion\Virtualization\GuestCommunicationServices\00002E70-FACB-11E6-BD58-64006A7986D3"
+          Type="string" Name="ElementName" Value="SKYM Integration" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Main feature -->
+    <Feature Id="MainFeature" Title="SKYM" Level="1" AllowAbsent="no"
+      Description="SSH Key Manager Main Application">
+      <ComponentGroupRef Id="Components" />
+    </Feature>
+
+    <!-- VC runtime version detection on non UI installation -->
+    <InstallExecuteSequence>
+      <Custom Action="VCNotInstalled" After="CostFinalize"
+        Condition="VCREDISTINSTALLED = 0" />
+    </InstallExecuteSequence>
+
+    <!-- UI reference -->
+    <ui:WixUI
+      Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER"
+    />
+
+    <!-- Custom dialog with link to VC redist download -->
+    <UI>
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="NewDialog" Value="VCRedistNotInstalled"
+        Condition="VCREDISTINSTALLED = 0"
+        Order="2" />
+      <Publish Dialog="VCRedistNotInstalled" Control="Finish" Event="EndDialog" Value="Exit"
+        Order="999" />
+
+      <Dialog Id="VCRedistNotInstalled" Width="370" Height="270" Title="!(loc.FatalError_Title)">
+        <Control Id="Finish" Type="PushButton" X="236" Y="243" Width="56" Height="17" Default="yes"
+          Cancel="yes" Text="!(loc.WixUIFinish)" />
+        <Control Id="Cancel" Type="PushButton" X="304" Y="243" Width="56" Height="17" Disabled="yes"
+          Text="!(loc.WixUICancel)" />
+        <Control Id="Bitmap" Type="Bitmap" X="0" Y="0" Width="370" Height="234" TabSkip="no"
+          Text="WixUI_Bmp_Dialog" />
+        <Control Id="Back" Type="PushButton" X="180" Y="243" Width="56" Height="17" Disabled="yes"
+          Text="!(loc.WixUIBack)" />
+        <Control Id="BottomLine" Type="Line" X="0" Y="234" Width="373" Height="0" />
+        <Control Id="Title" Type="Text" X="135" Y="20" Width="220" Height="60" Transparent="yes"
+          NoPrefix="yes" Text="!(loc.VCRedistNotInstalled_Title)" />
+        <Control Id="Description" Type="Text" X="135" Y="70" Width="220" Height="30"
+          Transparent="yes" NoPrefix="yes"
+          Text="!(loc.VCRedistNotInstalled_Description)" />
+        <Control Id="VCRedistributableLink" Type="Hyperlink" X="135" Y="110" Width="220" Height="15"
+          Transparent="yes">
+          <Text
+            Value="&lt;a href=&quot;$(var.VCRedistURL)&quot;&gt;Download Visual C++ Redistributable&lt;/a&gt;" />
+        </Control>
+      </Dialog>
+    </UI>
+
+    <UIRef Id="WixUI_ErrorProgressText" />
+  </Package>
+</Wix>

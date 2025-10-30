@@ -1,0 +1,3 @@
+[submodule "libssha"]
+	path = subprojects/libssha
+	url = https://github.com/michal-pod/libssha

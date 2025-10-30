@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Include xmlns="http://wixtoolset.org/schemas/v4/wxs">
+    <?include buildInfo.wxi?>
+
+    <?define AppName = "SKYM"?>
+    <?define Manufacturer = "nglab.net"?>
+
+    <?if $(var.Configuration) = Debug?>    
+    <?define ProgramConfig = "-Debug"?>
+    <?else?>
+    <?define ProgramConfig = ""?>
+    <?endif?>
+
+    
+    <?if $(var.Platform) = x64?>
+        <?define PlatformInName = "-64bit"?>
+        <?define Win64 = "yes"?>
+        <?define PlatformProgramFilesFolder = "ProgramFiles64Folder"?>
+        <?define ProductComponentGUID = "F9B44D49-88C6-4A33-A362-37B2A3086DB4"?>    
+        <?define UpgradeCode = "09D5AD35-2684-4E03-A6FA-5EC05DC23B2C"?>
+        <?define VCRedistURL = "https://aka.ms/vc14/vc_redist.x64.exe"?>
+    <?elseif  $(var.Platform) = arm64?>    
+        <?define PlatformInName = "-a64bit"?>
+        <?define Win64 = "yes"?>
+        <?define PlatformProgramFilesFolder = "ProgramFilesFolder"?>
+        <?define ProductComponentGUID = "A227C352-9655-4A4B-9B39-8AD620B54A57"?>
+        <?define UpgradeCode = "1FEE15C5-61F8-4419-9BB3-ACA5FF770A74"?>
+        <?define VCRedistURL = "https://aka.ms/vc14/vc_redist.arm64.exe"?>
+    <?else?>    
+        <?define PlatformInName = "-32bit"?>
+        <?define Win64 = "no"?>
+        <?define PlatformProgramFilesFolder = "ProgramFilesFolder"?>
+        <?define ProductComponentGUID = "A99E0F29-54FC-4393-8A84-ABDB543FE701"?>    
+        <?define UpgradeCode = "1FEE15C5-61F8-4419-9BB3-ACA5FF770A74"?>
+        <?define VCRedistURL = "https://aka.ms/vc14/vc_redist.x86.exe"?>
+    <?endif?>
+
+    <?define Name = "$(var.AppName)$(var.PlatformInName)$(var.ProgramConfig)"?>
+    <?define StartupMenuName = "$(var.AppName)"?>
+    <?define PackageName = "$(var.AppName) $(var.ProductVersion)"?>
+</Include>

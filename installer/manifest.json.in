@@ -1,0 +1,13 @@
+{
+    "version" : "@VERSION@",
+    "architecture" : "@SKYM_ARCHITECTURE@",
+    "files" : [
+        "@SKYMExePath@",
+        "@SKYMNPPExePath@",
+        "@SKYKDCCExePath@",
+        "@SKYMHVHExePath@",
+        "@LICENSEFilePath@",
+        "@SKYMDocFilePath@",
+        "@SKYMGithubLink@"
+    ]
+}

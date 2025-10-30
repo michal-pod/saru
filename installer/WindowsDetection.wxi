@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Include xmlns="http://wixtoolset.org/schemas/v4/wxs">
+    <Property Id="NTBUILDNUMBER">
+        <RegistrySearch Id="NTBuildNumberSearch"
+            Root="HKLM"
+            Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion"
+            Name="CurrentBuildNumber"
+            Type="raw" />
+    </Property>
+
+
+    <Launch Message="This installer requires Windows 10 version 1903 or later."
+        Condition="NTBUILDNUMBER AND NTBUILDNUMBER >= 18362" />
+</Include>

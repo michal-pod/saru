@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<Include xmlns="http://wixtoolset.org/schemas/v4/wxs">
+    <Property Id="VCREDISTINSTALLED" Value="0" />
+    <?if $(var.Platform) = x64?>
+    <Property Id="VC2022_X64">
+        <RegistrySearch Id="VC2022_X64_Search"
+            Root="HKLM"
+            Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64"
+            Name="Installed"
+            Type="raw" />
+    </Property>
+    <Property Id="VC2022_X64_WOW">
+        <RegistrySearch Id="VC2022_X64_WOW_Search"
+            Root="HKLM"
+            Key="SOFTWARE\WOW6432Node\Microsoft\VisualStudio\14.0\VC\Runtimes\x64"
+            Name="Installed"
+            Type="raw" />
+    </Property>    
+    <SetProperty Id="VCREDISTINSTALLED" Before="CostFinalize" Value="1"
+        Condition="VC2022_X64 OR VC2022_X64_WOW" />
+    <?elseif $(var.Platform) = x86?>
+    <Property Id="VC2022_X86">
+        <RegistrySearch Id="VC2022_X86_Search"
+            Root="HKLM"
+            Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x86"
+            Name="Installed"
+            Type="raw" />
+    </Property>
+    <SetProperty Id="VCREDISTINSTALLED" Before="CostFinalize" Value="1"
+        Condition="VC2022_X86" />
+    <?elseif $(var.Platform) = arm64?>
+    <Property Id="VC2022_ARM64">
+        <RegistrySearch Id="VC2022_ARM64_Search"
+            Root="HKLM"
+            Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\arm64"
+            Name="Installed"
+            Type="raw" />
+    </Property>
+    <SetProperty Id="VCREDISTINSTALLED" Before="CostFinalize" Value="1"
+        Condition="VC2022_ARM64" />
+    <?endif?>
+</Include>

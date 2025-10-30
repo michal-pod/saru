@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Include>
+<?define ProductVersion="@VERSION@"?>
+<?define SKYMExe="@SKYMExePath@"?>
+<?define SKYMNPPExe="@SKYMNPPExePath@"?>
+<?define SKYKDCCExe="@SKYKDCCExePath@"?>
+<?define SKYMHVHExe="@SKYMHVHExePath@"?>
+</Include>
