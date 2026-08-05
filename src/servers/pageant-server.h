@@ -136,41 +136,9 @@ namespace nglab
             {
             }
 
-            BOOL Start()
-            {
-                if (::FindWindowW(L"Pageant", L"Pageant"))
-                {
-                    CKeyList::instance().DisplayTrayNotification("Error", "Another instance of Pageant is already running.\nPageant support will be disabled.", NIIF_ERROR);
-                    log.error("Another instance of Pageant is already running");
-                    return FALSE;
-                }
+            BOOL Start();
 
-                if (m_thread.joinable())
-                {
-                    log.warning("Pageant server is already running");
-                    return FALSE;
-                }
-                m_thread = std::thread([this]()
-                                       {
-                    CMessageLoop theLoop;
-                    _Module.AddMessageLoop(&theLoop);
-                    this->Create(NULL, CWindow::rcDefault, _T("Pageant"), WS_OVERLAPPEDWINDOW, 0);
-                    this->SetTimer(CleanupTimer, 1000);
-                    theLoop.Run();
-                    this->DestroyWindow();
-                    _Module.RemoveMessageLoop(); });
-
-                return TRUE;
-            }
-
-            void Stop()
-            {
-                PostMessage(WM_QUIT);
-                if (m_thread.joinable())
-                {
-                    m_thread.join();
-                }
-            }
+            void Stop();
 
             bool isRunning() const
             {

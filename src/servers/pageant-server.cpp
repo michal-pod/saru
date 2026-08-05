@@ -16,8 +16,11 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #include <string>
+#include <string_view>
 #include <unordered_map>
 
+#include <charconv>
+#include <cstring>
 #include <system_error>
 #include "pageant-server.h"
 #include "stdatl.h"
@@ -25,153 +28,200 @@
 
 using namespace nglab::skym;
 
+BOOL CPageantServer::Start()
+{
+    if (::FindWindowW(L"Pageant", L"Pageant"))
+    {
+        CKeyList::instance().DisplayTrayNotification("Error", "Another instance of Pageant is already running.\nPageant support will be disabled.", NIIF_ERROR);
+        log.error("Another instance of Pageant is already running");
+        return FALSE;
+    }
+
+    if (m_thread.joinable())
+    {
+        log.warning("Pageant server is already running");
+        return FALSE;
+    }
+
+    m_thread = std::thread([this]()
+    {
+        CMessageLoop theLoop;
+        _Module.AddMessageLoop(&theLoop);
+        this->Create(NULL, CWindow::rcDefault, _T("Pageant"), WS_OVERLAPPEDWINDOW, 0);
+        this->SetTimer(CleanupTimer, 1000);
+        theLoop.Run();
+        this->DestroyWindow();
+        _Module.RemoveMessageLoop();
+    });
+
+    return TRUE;
+}
+
+void CPageantServer::Stop()
+{
+    PostMessage(WM_QUIT);
+    if (m_thread.joinable())
+    {
+        m_thread.join();
+    }
+}
+
 LRESULT CPageantServer::OnCopyData(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled)
 {
-    PCOPYDATASTRUCT pCDS = reinterpret_cast<PCOPYDATASTRUCT>(lParam);
+    constexpr std::string_view mappingPrefix = "PageantRequest";
+    constexpr size_t mappingNameLength = mappingPrefix.size() + sizeof(DWORD) * 2;
+    constexpr SIZE_T mappingSize = 8192;
 
-    // Validate COPYDATASTRUCT
-    if (!pCDS || !pCDS->lpData || pCDS->cbData == 0)
-    {
-        return FALSE;
-    }
+    HANDLE hMapping = nullptr;
+    LPVOID pMapView = nullptr;
 
-    // Check the identifier
-    if (pCDS->dwData != PAGEANT_COPYDATA_ID)
+    try
     {
-        return FALSE;
-    }
+        const auto *copyData = reinterpret_cast<const COPYDATASTRUCT *>(lParam);
+        if (!copyData || !copyData->lpData || copyData->dwData != PAGEANT_COPYDATA_ID)
+        {
+            return FALSE;
+        }
 
-    DWORD threadId=0;
-    // Extract threadId from mapping name using std::string
-    std::string mappingName(static_cast<const char *>(pCDS->lpData));
-    if (mappingName.rfind("PageantRequest", 0) == 0) // Check if it starts with "PageantRequest"
-    {
-        std::string threadIdStr = mappingName.substr(14); // Extract the thread ID part
-        threadId = std::stoul(threadIdStr, nullptr, 16);
-    }
-    // Try to find process ID
-    DWORD processId = 0;// FindProcessId(static_cast<const char *>(pCDS->lpData));
-    if(threadId != 0)
-    {
-        HANDLE hThread = OpenThread(THREAD_QUERY_INFORMATION, FALSE, threadId);
+        if (copyData->cbData != mappingNameLength + 1)
+        {
+            log.warning("Rejected COPYDATA with an invalid Pageant mapping name");
+            return FALSE;
+        }
+
+        const auto *mappingData = static_cast<const char *>(copyData->lpData);
+        if (mappingData[mappingNameLength] != '\0')
+        {
+            log.warning("Rejected COPYDATA with an invalid Pageant mapping name");
+            return FALSE;
+        }
+
+        std::string mappingName(mappingData, mappingNameLength);
+        if (!std::string_view(mappingName).starts_with(mappingPrefix))
+        {
+            log.warning("Rejected COPYDATA with an invalid Pageant mapping name");
+            return FALSE;
+        }
+
+        DWORD mappingThreadId = 0;
+        const auto [end, error] = std::from_chars(
+            mappingName.data() + mappingPrefix.size(), mappingName.data() + mappingName.size(), mappingThreadId, 16);
+        if (error != std::errc{} || end != mappingName.data() + mappingName.size() || mappingThreadId == 0)
+        {
+            log.warning("Rejected COPYDATA with an invalid Pageant mapping name");
+            return FALSE;
+        }
+
+        DWORD processId = 0;
+        HANDLE hThread = OpenThread(THREAD_QUERY_LIMITED_INFORMATION, FALSE, mappingThreadId);
         if (hThread)
         {
             processId = GetProcessIdOfThread(hThread);
             CloseHandle(hThread);
         }
-    }
-    //GetWindowThreadProcessId(hWnd, &processId);
 
-    log.debug("Received COPYDATA from process ID {}", processId);
+        if (processId == 0)
+        {
+            log.warning("Could not determine Pageant client process ID");
+        }
 
-    // Now we need to get message from client
-    HANDLE hMapping = OpenFileMapping(
-        FILE_MAP_ALL_ACCESS,
-        FALSE,
-        static_cast<LPCSTR>(pCDS->lpData));
+        log.debug("Received COPYDATA from process ID {}", processId);
 
-    if (!hMapping)
-    {
-        log.error("OpenFileMapping failed");
-        return FALSE;
-    }
+        hMapping = OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, mappingName.c_str());
+        if (!hMapping)
+        {
+            log.error("OpenFileMapping failed");
+            return FALSE;
+        }
 
-    CSID expected = CSID::getUser();
-    CSID expected_legacy = CSID::getDefault();
-    CSID actual = CSID::getSidOfHandle(hMapping);
+        CSID expected = CSID::getUser();
+        CSID expectedLegacy = CSID::getDefault();
+        CSID actual = CSID::getSidOfHandle(hMapping);
 
-    if (!(expected == actual || expected_legacy == actual))
-    {
-        log.error("Client SID does not match expected SID");
-        CloseHandle(hMapping);
-        return FALSE;
-    }
+        if (!(expected == actual || expectedLegacy == actual))
+        {
+            log.error("Client SID does not match expected SID");
+            CloseHandle(hMapping);
+            return FALSE;
+        }
 
-    LPVOID pMapView = MapViewOfFile(
-        hMapping,
-        FILE_MAP_WRITE,
-        0,
-        0,
-        0);
+        pMapView = MapViewOfFile(hMapping, FILE_MAP_WRITE, 0, 0, mappingSize);
+        if (!pMapView)
+        {
+            log.error("MapViewOfFile failed");
+            CloseHandle(hMapping);
+            return FALSE;
+        }
 
-    if (!pMapView)
-    {
-        log.error("MapViewOfFile failed");
-        return FALSE;
-    }
+        auto session = m_sessions.find(processId);
+        if (session == m_sessions.end())
+        {
+            session = m_sessions.emplace(processId, processId).first;
+        }
+        PageantSession &pageantSession = session->second;
+        pageantSession.process(static_cast<uint8_t *>(pMapView), mappingSize);
+        pageantSession.touch();
 
-    size_t messageLength;
+        const auto &response = pageantSession.getResponse();
+        if (response.size() > mappingSize)
+        {
+            log.error("Response size exceeds Pageant shared memory size");
+            UnmapViewOfFile(pMapView);
+            CloseHandle(hMapping);
+            return FALSE;
+        }
+        memcpy(pMapView, response.data(), response.size());
 
-    MEMORY_BASIC_INFORMATION mbi;
-    size_t mbiSize = VirtualQuery(pMapView, &mbi, sizeof(mbi));
-    if (mbiSize == 0)
-    {
-        log.error("VirtualQuery failed");
         UnmapViewOfFile(pMapView);
         CloseHandle(hMapping);
+        return TRUE;
+    }
+    catch (const std::exception &e)
+    {
+        if (pMapView)
+        {
+            UnmapViewOfFile(pMapView);
+        }
+        if (hMapping)
+        {
+            CloseHandle(hMapping);
+        }
+        log.error("Failed to process Pageant COPYDATA: {}", e.what());
         return FALSE;
     }
-
-    if (mbiSize < (offsetof(MEMORY_BASIC_INFORMATION, RegionSize) + sizeof(mbi.RegionSize)))
+    catch (...)
     {
-        log.error("VirtualQuery returned insufficient data");
-        UnmapViewOfFile(pMapView);
-        CloseHandle(hMapping);
+        if (pMapView)
+        {
+            UnmapViewOfFile(pMapView);
+        }
+        if (hMapping)
+        {
+            CloseHandle(hMapping);
+        }
+        log.error("Failed to process Pageant COPYDATA with an unknown exception");
         return FALSE;
     }
-
-    messageLength = mbi.RegionSize;
-
-    std::unordered_map<DWORD, PageantSession>::iterator session = m_sessions.find(processId);
-    if (session == m_sessions.end())
-    {
-        m_sessions.emplace(processId, processId);
-        session = m_sessions.find(processId);
-    }
-
-    KillTimer(1); // pause session cleanup during processing
-
-    PageantSession &pageantSession = session->second;
-    pageantSession.process(static_cast<uint8_t *>(pMapView), messageLength);
-    pageantSession.touch();
-
-    auto &response = pageantSession.getResponse();
-    if (response.size() > messageLength)
-    {
-        log.error("Response size exceeds shared memory size");
-        UnmapViewOfFile(pMapView);
-        CloseHandle(hMapping);
-        return FALSE;
-    }
-    memcpy(pMapView, response.data(), response.size());
-
-    UnmapViewOfFile(pMapView);
-    CloseHandle(hMapping);
-
-    SetTimer(CleanupTimer, 1000); // resume session cleanup
-
-    return TRUE;
 }
 
 LRESULT CPageantServer::OnTimer(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled)
 {
-    if(wParam == CleanupTimer)
+    if (wParam == CleanupTimer)
     {
-    for (auto it = m_sessions.begin(); it != m_sessions.end(); )
-    {
-        if (it->second.isExpired())
+        for (auto it = m_sessions.begin(); it != m_sessions.end();)
         {
-            log.debug("Removing expired session for process ID {}", it->first);
-            it = m_sessions.erase(it);
+            if (it->second.isExpired())
+            {
+                log.debug("Removing expired session for process ID {}", it->first);
+                it = m_sessions.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
         }
-        else
-        {
-            ++it;
-        }
+        SetTimer(CleanupTimer, 1000);
     }
-    SetTimer(CleanupTimer, 1000);
-}
 
-    
     return 0;
 }
