@@ -113,6 +113,11 @@ bool KeyConstrainsLoader::loadConstraintsInt(KeyBasePtr key, const std::string &
                     signature.clear();
                 }
             }
+
+            if(signature.empty()){
+                log.vdebug("No stored signature found in registry for key {}", key->fingerprint(PubKeyBase::FingerprintFormat::Sha256Hex));
+                return false;
+            }
         }
         else {
             log.vdebug("No stored constraints found in registry for key {}", key->fingerprint(PubKeyBase::FingerprintFormat::Sha256Hex));
@@ -171,22 +176,26 @@ bool KeyConstrainsLoader::loadConstraintsInt(KeyBasePtr key, const std::string &
         {
             ext.deserialize(deserializer);
 
-            key->setDestConstraints(ext.constraints());
-            log.debug("Loaded {} constraints for key {}", ext.constraints().size(), key->fingerprint());
-            auto calculated_signature = key->sign(data, 0);
+
             if (signature.empty())
             {
-                signature = calculated_signature;
+                signature = key->sign(data, 0);
+
                 log.vdebug("Calculated signature for loaded constraints for key {}", key->fingerprint());
             }
 
-            if (calculated_signature != signature)
+            if (key->pubKey().verify(data, signature) == false)
             {
                 log.error("Signature verification failed for loaded constraints for key {}", key->fingerprint());
                 throw nglab::skym::DialogException("Signature verification failed|Signature verification failed for loaded constraints");
             }
+
             log.trace("Signature verification succeeded for loaded constraints for key {}, size of signature {}",
                  key->fingerprint(), signature.size());
+
+            key->setDestConstraints(ext.constraints());
+
+            log.debug("Loaded {} constraints for key {}", ext.constraints().size(), key->fingerprint());
         }
         catch (const std::exception &e)
         {
