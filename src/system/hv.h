@@ -1,6 +1,6 @@
 /*
  SKYM - SSH KeY Manager
- Copyright (C) 2025 Michał Podsiadlik
+ Copyright (C) 2025-2026 Michał Podsiadlik <michal@nglab.net>
 
  This program is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
