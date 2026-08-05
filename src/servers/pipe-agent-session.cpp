@@ -112,6 +112,9 @@ namespace nglab
                 0,
                 &sa);
 
+            LocalFree(pAcl);
+            LocalFree(pSidCopy);
+
             if (m_hPipe == INVALID_HANDLE_VALUE)
             {
                 log.error("CreateNamedPipe failed");
@@ -121,6 +124,17 @@ namespace nglab
             m_hEventConnect = CreateEventA(nullptr, TRUE, FALSE, nullptr);
             m_hEventRead = CreateEventA(nullptr, TRUE, FALSE, nullptr);
             m_hEventWrite = CreateEventA(nullptr, TRUE, FALSE, nullptr);
+
+            if (!m_hEventConnect || !m_hEventRead || !m_hEventWrite)
+            {
+                log.error("Failed to create named pipe events: {}", GetLastError());
+                if (m_hEventConnect) CloseHandle(m_hEventConnect);
+                if (m_hEventRead) CloseHandle(m_hEventRead);
+                if (m_hEventWrite) CloseHandle(m_hEventWrite);
+                CloseHandle(m_hPipe);
+                m_hPipe = INVALID_HANDLE_VALUE;
+                throw std::runtime_error("Failed to create named pipe events");
+            }
 
             ZeroMemory(&m_ovConnect, sizeof(OVERLAPPED));
             ZeroMemory(&m_ovRead, sizeof(OVERLAPPED));
@@ -136,6 +150,19 @@ namespace nglab
             else if (!bConnected && dwError == ERROR_PIPE_CONNECTED)
             {
                 SetEvent(m_hEventConnect);
+            }
+            else if (!bConnected)
+            {
+                log.error("ConnectNamedPipe failed: {}", dwError);
+                CloseHandle(m_hEventConnect);
+                CloseHandle(m_hEventRead);
+                CloseHandle(m_hEventWrite);
+                CloseHandle(m_hPipe);
+                m_hEventConnect = nullptr;
+                m_hEventRead = nullptr;
+                m_hEventWrite = nullptr;
+                m_hPipe = INVALID_HANDLE_VALUE;
+                throw std::runtime_error(std::format("ConnectNamedPipe failed: {}", dwError));
             }
         }
 
@@ -160,18 +187,46 @@ namespace nglab
 
         bool NamedPipeSession::send(secure_vector<uint8_t> &data)
         {
+            std::lock_guard<std::mutex> lock(m_writeMutex);
+            if (m_writePending)
+            {
+                log.error("Cannot send a response while another write is pending");
+                return false;
+            }
+
+            m_writeBuffer = data;
+            memset(data.data(), 0x42, data.size());
+
             DWORD bytesWritten = 0;
             ResetEvent(m_hEventWrite);
             ZeroMemory(&m_ovWrite, sizeof(OVERLAPPED));
             m_ovWrite.hEvent = m_hEventWrite;
-            BOOL bResult = WriteFile(m_hPipe, data.data(), static_cast<DWORD>(data.size()), &bytesWritten, &m_ovWrite);
-            memset(data.data(), 0x42, data.size());
-            if (!bResult && GetLastError() != ERROR_IO_PENDING)
+            BOOL bResult = WriteFile(m_hPipe, m_writeBuffer.data(), static_cast<DWORD>(m_writeBuffer.size()), &bytesWritten, &m_ovWrite);
+            if (bResult)
+            {
+                if (bytesWritten != m_writeBuffer.size())
+                {
+                    log.error("Incomplete synchronous write: {} of {} bytes", bytesWritten, m_writeBuffer.size());
+                    memset(m_writeBuffer.data(), 0x42, m_writeBuffer.size());
+                    m_writeBuffer.clear();
+                    return false;
+                }
+
+                memset(m_writeBuffer.data(), 0x42, m_writeBuffer.size());
+                m_writeBuffer.clear();
+                ResetEvent(m_hEventWrite);
+                return true;
+            }
+
+            if (GetLastError() != ERROR_IO_PENDING)
             {
                 log.error("Failed to write to pipe");
+                memset(m_writeBuffer.data(), 0x42, m_writeBuffer.size());
+                m_writeBuffer.clear();
                 return false;
             }
 
+            m_writePending = true;
             return true;
         }
 
@@ -282,11 +337,27 @@ namespace nglab
         bool NamedPipeSession::onWritten()
         {
             log.vdebug("Write event for client PID={}", clientInfo.ClientPid);
+
+            std::lock_guard<std::mutex> lock(m_writeMutex);
+            if (!m_writePending)
+            {
+                return true;
+            }
+
             DWORD dwBytesWritten = 0;
             if (GetOverlappedResult(m_hPipe, &m_ovWrite, &dwBytesWritten, FALSE))
             {
                 ResetEvent(m_hEventWrite);
                 log.vdebug("Wrote {} bytes to client PID={}", dwBytesWritten, clientInfo.ClientPid);
+                if (dwBytesWritten != m_writeBuffer.size())
+                {
+                    log.error("Incomplete write: {} of {} bytes", dwBytesWritten, m_writeBuffer.size());
+                    return false;
+                }
+
+                memset(m_writeBuffer.data(), 0x42, m_writeBuffer.size());
+                m_writeBuffer.clear();
+                m_writePending = false;
                 return true;
             }
             else

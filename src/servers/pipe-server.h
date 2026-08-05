@@ -46,6 +46,9 @@ namespace nglab
             std::vector<std::unique_ptr<AsyncServer>> m_Clients;
             std::thread m_ServerThread;
             HANDLE m_stopEvent;
+
+            static constexpr size_t MaxClients = (MAXIMUM_WAIT_OBJECTS - 1) / 3;
+            bool hasClientCapacity() const { return m_Clients.size() < MaxClients; }
         };
     } // namespace skym
 } // namespace nglab

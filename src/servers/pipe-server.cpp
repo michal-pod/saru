@@ -100,7 +100,7 @@ namespace nglab
                 }
             }
             // Create the first client to listen for connections
-            if(createNamedPipe){            
+            if(createNamedPipe){
                 m_Clients.push_back(std::make_unique<NamedPipeSession>(m_pipeName));
             }
             else {
@@ -135,6 +135,11 @@ namespace nglab
                 }
 
                 vecHandles.push_back(m_stopEvent);
+                if (vecHandles.size() > MAXIMUM_WAIT_OBJECTS)
+                {
+                    log.error("Handle limit exceeded: {} handles", vecHandles.size());
+                    break;
+                }
 
                 DWORD dwResult = WaitForMultipleObjects(
                     static_cast<DWORD>(vecHandles.size()),
@@ -160,7 +165,7 @@ namespace nglab
                         info_str += std::format("{}={}, ", type, count);
                     }
                     info_str += std::format("total={}", m_Clients.size());
-                    info_str += std::format(" | Keys loaded: {}", KeyManager::instance().keys().size());
+                    info_str += std::format(" | Keys loaded: {}", KeyManager::instance().keyCount());
                     debug_console.setTitle(info_str);
                     last_info_update = std::chrono::steady_clock::now();
                 }
@@ -208,6 +213,13 @@ namespace nglab
                             {
                                 if (newSocket != INVALID_SOCKET)
                                 {
+                                    if (!hasClientCapacity())
+                                    {
+                                        log.warning("Client limit ({}) reached, rejecting Hyper-V connection", MaxClients);
+                                        closesocket(newSocket);
+                                        continue;
+                                    }
+
                                     // Create a new HyperVSession for the new socket
                                     log.debug("Hyper-V client accepted new connection, PID={}", hvClient.clientPid());
 
@@ -225,6 +237,14 @@ namespace nglab
                             log.debug("New Named Pipe client connected, PID={}", client.clientPid());
                             if (client.onConnected())
                             {
+                                if (!hasClientCapacity())
+                                {
+                                    log.warning("Client limit ({}) reached, rejecting named pipe connection", MaxClients);
+                                    disconnectClient(clientIndex);
+                                    m_Clients.push_back(std::make_unique<NamedPipeSession>(m_pipeName));
+                                    continue;
+                                }
+
                                 // Create a new client for the next connection
                                 m_Clients.push_back(std::make_unique<NamedPipeSession>(m_pipeName));
                                 continue;

@@ -16,6 +16,7 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #pragma once
+#include <mutex>
 #include <string>
 #include <vector>
 #include <windows.h>
@@ -92,16 +93,19 @@ namespace nglab
             virtual char type() const override;
 
         private:
-            HANDLE m_hPipe;
-            HANDLE m_hEventConnect;
-            HANDLE m_hEventRead;
-            HANDLE m_hEventWrite;
+            HANDLE m_hPipe{INVALID_HANDLE_VALUE};
+            HANDLE m_hEventConnect{nullptr};
+            HANDLE m_hEventRead{nullptr};
+            HANDLE m_hEventWrite{nullptr};
             OVERLAPPED m_ovConnect;
             OVERLAPPED m_ovRead;
             OVERLAPPED m_ovWrite;
             std::string m_sClientPath;
             PSID m_sClientSid;
             std::vector<uint8_t> m_readBuffer;
+            secure_vector<uint8_t> m_writeBuffer;
+            bool m_writePending{false};
+            std::mutex m_writeMutex;
         };
     }
 }
