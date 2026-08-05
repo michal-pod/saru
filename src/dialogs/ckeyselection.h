@@ -16,6 +16,7 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #pragma once
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -39,26 +40,33 @@ namespace nglab
         using nglab::libssha::KeyManagerObserver;
         using nglab::libssha::PubKeyItemList;
         using nglab::libssha::KeyBasePtr;
+        using nglab::libssha::PubKeyItem;
         class CKeySelectionDlg : public CUserInputDialog<CKeySelectionDlg>,
                                  public nglab::libssha::KeyManagerObserver,
                                  virtual public LogEnabler
         {
         public:
+            using KeyListProvider = std::function<PubKeyItemList()>;
+
             enum
             {
-                IDD = IDD_KEY_SELECTION
+                IDD = IDD_KEY_SELECTION,
+                PrimaryButtonId = IDOK,
+                CancelButtonId = IDCANCEL,
+                WM_REFRESH_KEYS = WM_APP + 1
             };
 
             BEGIN_MSG_MAP(CKeySelectionDlg)
             MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
             MESSAGE_HANDLER(WM_TIMER, OnTimer)
             MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
+            MESSAGE_HANDLER(WM_REFRESH_KEYS, OnRefreshKeys)
             NOTIFY_HANDLER(IDC_KEY_LIST, NM_DBLCLK, OnListDblClick)
             COMMAND_ID_HANDLER(IDOK, OnOk)
             COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
             END_MSG_MAP()
 
-            CKeySelectionDlg(const PubKeyItemList &keys, const ClientInfo &clientInfo, WindowsSessionType sessionType);
+            CKeySelectionDlg(KeyListProvider keyListProvider, const ClientInfo &clientInfo, WindowsSessionType sessionType);
             ~CKeySelectionDlg();
 
             virtual BOOL PreTranslateMessage(MSG *pMsg);
@@ -68,21 +76,24 @@ namespace nglab
             LRESULT OnOk(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled);
             LRESULT OnCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled);
             LRESULT OnDpiChanged(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled);
+            LRESULT OnRefreshKeys(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled);
 
             virtual void onKeyAdded(KeyBasePtr key) override;
-            virtual void onKeyRemoved(const std::string &fingerprint) override;
-            virtual void onKeyPreRemove(KeyBasePtr key) override {};
-            virtual void onKeysCleared() override {};
+            virtual void onKeyRemoved(KeyBasePtr key) override;
+            virtual void onKeysCleared() override;
             virtual void onKeyUsed(KeyBasePtr key, const libssha::Session *session) override {};
             virtual void onKeyDeclined(KeyBasePtr key, const libssha::Session *session) override {};
             virtual void onLocked() override {};
             virtual void onUnlocked() override {};
 
-            int selectedIndex() const { return m_selectedIndex; }
+            const PubKeyItem &selectedItem() const { return m_keys.at(static_cast<size_t>(m_selectedIndex)); }
 
         private:
+            void refreshKeys();
+
             CListViewCtrl m_keyList;
             ATL::CString m_label;
+            KeyListProvider m_keyListProvider;
             PubKeyItemList m_keys;
             int m_selectedIndex = -1;
         };

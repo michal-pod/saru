@@ -17,16 +17,18 @@
 */
 #include "ckeyselection.h"
 
+#include <algorithm>
 #include <string>
+#include <utility>
 
 #include "servers/windows-session.h"
 
 using namespace nglab::skym;
 
-CKeySelectionDlg::CKeySelectionDlg(const PubKeyItemList &keys, const ClientInfo &clientInfo, WindowsSessionType sessionType)
-    : m_keys(keys),
-      CUserInputDialog<CKeySelectionDlg>(clientInfo),
-      LogEnabler("CKeySelectionDlg")
+CKeySelectionDlg::CKeySelectionDlg(KeyListProvider keyListProvider, const ClientInfo &clientInfo, WindowsSessionType sessionType)
+    : CUserInputDialog<CKeySelectionDlg>(clientInfo),
+      LogEnabler("CKeySelectionDlg"),
+      m_keyListProvider(std::move(keyListProvider))
 {
     std::string sessionTypeStr;
     if (sessionType == WindowsSessionType::Pageant)
@@ -84,22 +86,7 @@ LRESULT CKeySelectionDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, 
     m_keyList.InsertColumn(1, "Comment", LVCFMT_LEFT, 160);
     m_keyList.InsertColumn(2, "Fingerprint", LVCFMT_LEFT, 360);
 
-    for (auto &key : m_keys)
-    {
-        int index = m_keyList.InsertItem(static_cast<int>(&key - &m_keys[0]), key.type.c_str());
-        m_keyList.SetItemText(index, 1, key.comment.c_str());
-        m_keyList.SetItemText(index, 2, key.fingerprint.c_str());
-    }
-
-    if (!m_keys.empty())
-    {
-        int sel = 0;
-        // Set the selection mark first so keyboard navigation starts at this item
-        m_keyList.SetSelectionMark(sel);
-        m_keyList.SetItemState(sel, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
-        m_keyList.EnsureVisible(sel, FALSE);
-        m_keyList.SetFocus();
-    }
+    refreshKeys();
 
     // Returning FALSE because we explicitly set focus to a control
     return FALSE;
@@ -116,6 +103,12 @@ LRESULT CKeySelectionDlg::OnDpiChanged(UINT uMsg, WPARAM wParam, LPARAM lParam, 
 
     bHandled = TRUE;
 
+    return 0;
+}
+
+LRESULT CKeySelectionDlg::OnRefreshKeys(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled)
+{
+    refreshKeys();
     return 0;
 }
 
@@ -148,24 +141,88 @@ LRESULT CKeySelectionDlg::OnListDblClick(int /*idCtrl*/, LPNMHDR /*pnmh*/, BOOL 
 
 void CKeySelectionDlg::onKeyAdded(KeyBasePtr key)
 {
-    int index = m_keyList.GetItemCount();
-    m_keyList.InsertItem(index, key->type().c_str());
-    m_keyList.SetItemText(index, 1, key->comment().c_str());
-    m_keyList.SetItemText(index, 2, key->fingerprint().c_str());
-
-    log.debug("Added key to list: {}", key->fingerprint());
+    PostMessage(WM_REFRESH_KEYS);
 }
 
-void CKeySelectionDlg::onKeyRemoved(const std::string &fingerprint)
+void CKeySelectionDlg::onKeyRemoved(KeyBasePtr key)
 {
-    for (int i = 0; i < m_keyList.GetItemCount(); ++i)
+    PostMessage(WM_REFRESH_KEYS);
+}
+
+void CKeySelectionDlg::onKeysCleared()
+{
+    PostMessage(WM_REFRESH_KEYS);
+}
+
+void CKeySelectionDlg::refreshKeys()
+{
+    std::string selectedFingerprint;
+    const int selectedIndex = m_keyList.GetSelectedIndex();
+    if (selectedIndex >= 0 && static_cast<size_t>(selectedIndex) < m_keys.size())
     {
-        CHAR szText[256];
-        m_keyList.GetItemText(i, 2, szText, sizeof(szText));
-        if (fingerprint == szText)
+        selectedFingerprint = m_keys[static_cast<size_t>(selectedIndex)].fingerprint;
+    }
+
+    const auto currentKeys = m_keyListProvider();
+
+    for (int i = static_cast<int>(m_keys.size()) - 1; i >= 0; --i)
+    {
+        const auto &oldKey = m_keys[static_cast<size_t>(i)];
+        const auto currentKey = std::find_if(currentKeys.begin(), currentKeys.end(),
+                                             [&oldKey](const auto &key)
+                                             {
+                                                 return key.fingerprint == oldKey.fingerprint;
+                                             });
+        if (currentKey == currentKeys.end())
         {
             m_keyList.DeleteItem(i);
-            break;
+            m_keys.erase(m_keys.begin() + i);
         }
+    }
+
+    for (const auto &key : currentKeys)
+    {
+        const auto existingKey = std::find_if(m_keys.begin(), m_keys.end(),
+                                              [&key](const auto &existing)
+                                              {
+                                                  return existing.fingerprint == key.fingerprint;
+                                              });
+        if (existingKey == m_keys.end())
+        {
+            const int index = m_keyList.GetItemCount();
+            m_keyList.InsertItem(index, key.type.c_str());
+            m_keyList.SetItemText(index, 1, key.comment.c_str());
+            m_keyList.SetItemText(index, 2, key.fingerprint.c_str());
+            m_keys.push_back(key);
+        }
+        else
+        {
+            const int index = static_cast<int>(std::distance(m_keys.begin(), existingKey));
+            m_keyList.SetItemText(index, 0, key.type.c_str());
+            m_keyList.SetItemText(index, 1, key.comment.c_str());
+            m_keys[static_cast<size_t>(index)] = key;
+        }
+    }
+
+    int newSelectedIndex = 0;
+    if (!selectedFingerprint.empty())
+    {
+        const auto selectedKey = std::find_if(m_keys.begin(), m_keys.end(),
+                                              [&selectedFingerprint](const auto &key)
+                                              {
+                                                  return key.fingerprint == selectedFingerprint;
+                                              });
+        if (selectedKey != m_keys.end())
+        {
+            newSelectedIndex = static_cast<int>(std::distance(m_keys.begin(), selectedKey));
+        }
+    }
+
+    if (!m_keys.empty())
+    {
+        m_keyList.SetSelectionMark(newSelectedIndex);
+        m_keyList.SetItemState(newSelectedIndex, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
+        m_keyList.EnsureVisible(newSelectedIndex, FALSE);
+        m_keyList.SetFocus();
     }
 }

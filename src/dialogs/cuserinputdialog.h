@@ -50,10 +50,10 @@ namespace nglab
             void initTimeout()
             {
                 CButton btnAccept;
-                btnAccept.Attach(this->GetDlgItem(IDOK));
+                btnAccept.Attach(this->GetDlgItem(T::PrimaryButtonId));
                 btnAccept.SetIcon(IconFactory::get(IDI_ACCEPT));
 
-                m_cancelButton.Attach(this->GetDlgItem(IDCANCEL));
+                m_cancelButton.Attach(this->GetDlgItem(T::CancelButtonId));
                 m_cancelButton.SetIcon(IconFactory::get(IDI_CANCEL));
 
                 CRegKey key;
@@ -175,7 +175,7 @@ namespace nglab
                         log.vdebug("CKeyConfirm dialog timed out");
                         this->KillTimer(IDT_TIMEOUT_CHECK);
 
-                        this->EndDialog(IDCANCEL);
+                        this->PostMessage(WM_COMMAND, MAKEWPARAM(IDCANCEL, 0), 0);
                     }
                 }
                 return 0;

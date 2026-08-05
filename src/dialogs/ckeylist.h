@@ -109,8 +109,7 @@ namespace nglab
             LRESULT OnAbout(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled);
 
             void onKeyAdded(const nglab::libssha::KeyBasePtr key) override;
-            void onKeyPreRemove(const nglab::libssha::KeyBasePtr key) override;
-            void onKeyRemoved(const std::string &fingerprint) override;
+            void onKeyRemoved(const nglab::libssha::KeyBasePtr key) override;
             void onKeysCleared() override;
             void onKeyUsed(const nglab::libssha::KeyBasePtr key, const nglab::libssha::Session *session) override;
             void onKeyDeclined(const nglab::libssha::KeyBasePtr key, const nglab::libssha::Session *session) override;
@@ -123,6 +122,9 @@ namespace nglab
             void updateKeyDetails(bool timerTriggered = false);
             bool shouldNotifyKeyOperations();
             void showOrHideWindow();
+            void keyAdded(const nglab::libssha::KeyBasePtr key);
+            void keyRemoved(const nglab::libssha::KeyBasePtr key);
+            void keysCleared();
             nglab::libssha::KeyBasePtr getSelectedKey();
             CKeyList();
             CListViewCtrl m_keyList;

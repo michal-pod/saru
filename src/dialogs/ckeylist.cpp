@@ -50,12 +50,16 @@ namespace
         enum MessageType
         {
             TrayNotify,
-            TaskBox
+            TaskBox,
+            KeyAdded,
+            KeyRemoved,
+            KeysCleared
         } type;
         std::string title;
         std::string message;
         DWORD infoType; // Used for TrayNotify messages
         UINT timeout;
+        KeyBasePtr key; // Used for KeyAdded, KeyRemoved, and KeysCleared messages
     };
 
 }
@@ -74,7 +78,10 @@ void CKeyList::DisplayTrayNotification(const std::string &title, const std::stri
     msg->infoType = infoType;
     msg->timeout = timeout;
 
-    PostMessage(WM_CROSS_UI_MESSAGE, 0, reinterpret_cast<LPARAM>(msg));
+    if(!PostMessage(WM_CROSS_UI_MESSAGE, 0, reinterpret_cast<LPARAM>(msg)))
+    {
+        delete msg;
+    }
 }
 
 void CKeyList::DisplayMessageBox(const std::string &title, const std::string &message)
@@ -84,7 +91,10 @@ void CKeyList::DisplayMessageBox(const std::string &title, const std::string &me
     msg->title = title;
     msg->message = message;
 
-    PostMessage(WM_CROSS_UI_MESSAGE, 0, reinterpret_cast<LPARAM>(msg));
+    if(!PostMessage(WM_CROSS_UI_MESSAGE, 0, reinterpret_cast<LPARAM>(msg)))
+    {
+        delete msg;
+    }
 }
 
 BOOL CKeyList::PreTranslateMessage(MSG *pMsg)
@@ -290,6 +300,16 @@ LRESULT CKeyList::OnCrossUIMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
         taskDialog.SetMainIcon(TD_INFORMATION_ICON);
         taskDialog.DoModal(m_hWnd);
     }
+    break;
+    case CrossUIMessage::KeyAdded:
+        keyAdded(msg->key);
+        break;
+    case CrossUIMessage::KeyRemoved:
+        keyRemoved(msg->key);
+        break;
+    case CrossUIMessage::KeysCleared:
+        keysCleared();
+        break;
     default:
         log.warning("Unhandled CrossUIMessage type: {}", static_cast<int>(msg->type));
         break;
@@ -388,7 +408,19 @@ LRESULT CKeyList::OnExit(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandle
     return 0;
 }
 
-void CKeyList::onKeyAdded(nglab::libssha::KeyBasePtr key)
+void CKeyList::onKeyAdded(const nglab::libssha::KeyBasePtr key)
+{
+    CrossUIMessage *msg = new CrossUIMessage();
+    msg->type = CrossUIMessage::KeyAdded;
+    msg->key = key;
+    if(!PostMessage(WM_CROSS_UI_MESSAGE, 0, reinterpret_cast<LPARAM>(msg)))
+    {
+        delete msg;
+    }
+}
+
+
+void CKeyList::keyAdded(nglab::libssha::KeyBasePtr key)
 {
     log.trace("Key added: {}", key->fingerprint());
     addKeyToList(key);
@@ -416,25 +448,45 @@ void CKeyList::onKeyAdded(nglab::libssha::KeyBasePtr key)
     }
 }
 
-void CKeyList::onKeyPreRemove(nglab::libssha::KeyBasePtr key)
+void CKeyList::onKeyRemoved(nglab::libssha::KeyBasePtr key)
 {
-    log.trace("Key about to be removed: {}", key->fingerprint());
+    CrossUIMessage *msg = new CrossUIMessage();
+    msg->type = CrossUIMessage::KeyRemoved;
+    msg->key = key;
+    if(!PostMessage(WM_CROSS_UI_MESSAGE, 0, reinterpret_cast<LPARAM>(msg)))
+    {
+        delete msg;
+    }
+}
+
+
+void CKeyList::keyRemoved(nglab::libssha::KeyBasePtr key)
+{
     if (shouldNotifyKeyOperations())
     {
         DisplayTrayNotification("Key Removed", std::format("Key {} is being removed from agent.", key->comment()), NIIF_INFO);
     }
-}
-
-void CKeyList::onKeyRemoved(const std::string &fingerprint)
-{
-    log.trace("Key removed: {}", fingerprint);
-    removeKeyFromList(fingerprint);
+    m_userLoadedConstraints.erase(key->fingerprint());
+    log.trace("Key removed: {}", key->fingerprint());
+    removeKeyFromList(key->fingerprint());
 }
 
 void CKeyList::onKeysCleared()
 {
+    CrossUIMessage *msg = new CrossUIMessage();
+    msg->type = CrossUIMessage::KeysCleared;
+    if(!PostMessage(WM_CROSS_UI_MESSAGE, 0, reinterpret_cast<LPARAM>(msg)))
+    {
+        delete msg;
+    }
+}
+
+
+void CKeyList::keysCleared()
+{
     log.trace("All keys cleared");
     m_keyList.DeleteAllItems();
+    m_userLoadedConstraints.clear();
     if (shouldNotifyKeyOperations())
     {
         DisplayTrayNotification("All Keys Removed", "All keys have been removed from the key manager.", NIIF_INFO);

@@ -50,16 +50,19 @@ namespace nglab
         public:
             enum
             {
-                IDD = IDD_KEY_CONFIRM
+                IDD = IDD_KEY_CONFIRM,
+                PrimaryButtonId = IDYES,
+                CancelButtonId = IDNO
             };
 
             BEGIN_MSG_MAP(CKeyConfirm)
             MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
             MESSAGE_HANDLER(WM_PAINT, OnPaint)
             MESSAGE_HANDLER(WM_TIMER, OnTimer)
-            COMMAND_ID_HANDLER(IDCANCEL, OnClose)
-            COMMAND_ID_HANDLER(IDOK, OnConfirm)
-            COMMAND_ID_HANDLER(IDCLOSE, OnClose)
+            COMMAND_ID_HANDLER(IDYES, OnAllow)
+            COMMAND_ID_HANDLER(IDNO, OnDeny)
+            COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
+            COMMAND_ID_HANDLER(IDCLOSE, OnCancel)
             COMMAND_ID_HANDLER(IDC_REMEMBER_CHECK, OnRememberCheck)
 
             END_MSG_MAP()
@@ -81,15 +84,15 @@ namespace nglab
             LRESULT OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled);
             LRESULT OnPaint(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled);
             LRESULT OnRememberCheck(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled);
-            LRESULT OnConfirm(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled);
-            LRESULT OnClose(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled);
+            LRESULT OnAllow(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled);
+            LRESULT OnDeny(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled);
+            LRESULT OnCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled);
 
             const int getRememberTime() const;
             const int getRememberKey() const;
 
-            virtual void onKeyAdded( KeyBasePtr key) override {};
-            virtual void onKeyRemoved(const std::string &fingerprint) override {};
-            virtual void onKeyPreRemove(KeyBasePtr key) override;
+            virtual void onKeyAdded(KeyBasePtr key) override {};
+            virtual void onKeyRemoved(KeyBasePtr key) override;
             virtual void onKeysCleared() override {};
             virtual void onKeyUsed(KeyBasePtr key, const libssha::Session* session) override {};
             virtual void onKeyDeclined(KeyBasePtr key, const libssha::Session* session) override {};

@@ -153,7 +153,8 @@ namespace nglab
 
                 auto dialogResult = confirmDialog.DoModal();
 
-                log.debug("Confirmation dialog result: {}", (dialogResult == IDOK) ? "confirmed" : "denied");
+                const bool confirmed = dialogResult == IDYES;
+                log.debug("Confirmation dialog result: {}", confirmed ? "confirmed" : "denied");
 
                 if (confirmDialog.getRememberKey())
                 {
@@ -163,12 +164,12 @@ namespace nglab
 
                     ConfirmMemory::set(
                         key.fingerprint(),
-                        (dialogResult == IDOK) ? ConfirmMemory::RememberedAsConfirmed : ConfirmMemory::RememberedAsDenied,
+                        confirmed ? ConfirmMemory::RememberedAsConfirmed : ConfirmMemory::RememberedAsDenied,
                         rememberTime);
                 }
 
-                log.info("Key {} was {}", key.fingerprint(), (dialogResult == IDOK) ? "confirmed" : "denied");
-                return (dialogResult == IDOK);
+                log.info("Key {} was {}", key.fingerprint(), confirmed ? "confirmed" : "denied");
+                return confirmed;
             }
 
             bool requiresConfirmation(const KeyBasePtr key) const
@@ -204,16 +205,18 @@ namespace nglab
                         auto items = km.listKeys(*this);
                         if (items.size() > 1)
                         {
-                            CKeySelectionDlg keySelectionDialog(items, clientInfo, SessionType);
+                            CKeySelectionDlg keySelectionDialog(
+                                [this]()
+                                {
+                                    return nglab::libssha::KeyManager::instance().listKeys(*this);
+                                },
+                                clientInfo,
+                                SessionType);
                             if (keySelectionDialog.DoModal() == IDOK)
                             {
-                                int selectedIndex = keySelectionDialog.selectedIndex();
-                                log.debug("User selected key at index {}", selectedIndex);
-                                if (selectedIndex >= 0 && selectedIndex < static_cast<int>(items.size()))
-                                {
-                                    const auto &item = items[selectedIndex];
-                                    response_msg.addIdentity(item.blob, item.comment);
-                                }
+                                const auto &item = keySelectionDialog.selectedItem();
+                                log.debug("User selected key {}", item.fingerprint);
+                                response_msg.addIdentity(item.blob, item.comment);
                             }
                         }
                         else if (items.size() == 1)

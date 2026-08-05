@@ -62,8 +62,8 @@ CAPTION "SSH Key Confirmation"
 STYLE DS_MODALFRAME | WS_POPUPWINDOW | WS_CAPTION
 FONT 9, "Segoe UI", 0, 0, 1
 {
-    DEFPUSHBUTTON "Deny", IDCANCEL, 200, 120, 60, 14
-    PUSHBUTTON "Allow", IDOK, 265, 120, 60, 14
+    DEFPUSHBUTTON "Deny", IDNO, 200, 120, 60, 14
+    PUSHBUTTON "Allow", IDYES, 265, 120, 60, 14
     ICON 0, IDC_APP_ICON, 10, 10, 0, 0
     LTEXT "", IDC_HEADER_LINE, 50, 10, 270, 10
     LTEXT "Do you allow access to this key?", -1, 50, 22, 270, 10

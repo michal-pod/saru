@@ -150,7 +150,7 @@ LRESULT CKeyConfirm::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL 
         }
     }
 
-    SendMessage(DM_SETDEFID, IDCANCEL, 0);
+    SendMessage(DM_SETDEFID, IDNO, 0);
 
     return TRUE;
 }
@@ -257,17 +257,24 @@ LRESULT CKeyConfirm::OnRememberCheck(WORD wNotifyCode, WORD wID, HWND hWndCtl, B
     return 0;
 }
 
-LRESULT CKeyConfirm::OnConfirm(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled)
+LRESULT CKeyConfirm::OnAllow(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled)
 {
     readRememberSettings();
 
-    EndDialog(IDOK);
+    EndDialog(IDYES);
     return 0;
 }
 
-LRESULT CKeyConfirm::OnClose(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled)
+LRESULT CKeyConfirm::OnDeny(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled)
 {
     readRememberSettings();
+    EndDialog(IDNO);
+    return 0;
+}
+
+LRESULT CKeyConfirm::OnCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled)
+{
+    m_rememberKey = 0;
     EndDialog(IDNO);
     return 0;
 }
@@ -304,7 +311,7 @@ const int CKeyConfirm::getRememberKey() const
     return m_rememberKey;
 }
 
-void CKeyConfirm::onKeyPreRemove(KeyBasePtr key)
+void CKeyConfirm::onKeyRemoved(KeyBasePtr key)
 {
     // If the key being removed is the one this dialog is for, close the dialog
     if (key->fingerprint() == std::string(m_keyFingerprint))
@@ -317,6 +324,6 @@ void CKeyConfirm::onKeyPreRemove(KeyBasePtr key)
         CKeyList::instance().DisplayTrayNotification(
             "Key removed", message, NIIF_WARNING);
 
-        EndDialog(IDCANCEL);
+        PostMessage(WM_COMMAND, IDCANCEL);
     }
 }
