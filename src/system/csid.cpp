@@ -91,7 +91,17 @@ namespace nglab
                 throw std::runtime_error("OpenProcess failed");
             }
 
-            return getSidOfHandle(hProcess);
+            try
+            {
+                CSID sid = getSidOfHandle(hProcess);
+                CloseHandle(hProcess);
+                return sid;
+            }
+            catch (...)
+            {
+                CloseHandle(hProcess);
+                throw;
+            }
         }
 
         CSID CSID::getSidOfHandle(HANDLE hObject)
