@@ -1,5 +1,5 @@
 ﻿/*
- SKYM - SSH KeY Manager
+ SARU - SSH Agent Replacment Utility
  Copyright (C) 2025-2026 Michał Podsiadlik <michal@nglab.net>
 
  This program is free software: you can redistribute it and/or modify
@@ -23,7 +23,7 @@
 #include "utils/string-converter.h"
 namespace nglab
 {
-    namespace skym
+    namespace saru
     {
         HyperVSession::HyperVSession()
             : LogEnabler("HyperVSession"), m_hvSocket(INVALID_SOCKET), m_isServerSocket(true)
@@ -173,7 +173,7 @@ namespace nglab
                 auto guidStr = StringConverter::fromGUIDA(clientAddr.VmId);
 
                 CRegKey vmKey;
-                std::string subpath = std::string(SKYM_KEY_ROOT "\\HyperVVMs\\") + guidStr;
+                std::string subpath = std::string(SARU_KEY_ROOT "\\HyperVVMs\\") + guidStr;
                 if (vmKey.Open(HKEY_CURRENT_USER, subpath.c_str(), KEY_READ) == ERROR_SUCCESS)
                 {
                     DWORD enabled = 0;

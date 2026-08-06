@@ -1,6 +1,6 @@
-# SKYM – SSH Key Manager for Windows
+# SARU – SSH Agent Replacement Utility
 
-**SKYM** is a Windows SSH agent and key manager that provides secure, user-friendly management of SSH private keys with advanced features like confirmation prompts, destination constraints, and seamless integration with popular SSH clients.
+**SARU** is a Windows SSH agent that provides secure, user-friendly, lightweight in-memory storage of SSH private keys with advanced features like confirmation prompts, destination constraints, and seamless integration with popular SSH clients.
 
 ## ✨ Key Features
 
@@ -16,14 +16,14 @@
 
 ### Installation
 
-1. Download the latest release from [Releases](http://github.com/michal-pod/skym/releases)
+1. Download the latest release from [Releases](http://github.com/michal-pod/saru/releases)
 2. Verify GPG signature (optional but recommended). All releases are signed using this key (GPG Key ID: B5201C42AAD6DB2CF32F92B008497C69E88074C6)
 3. Run the installer or extract the portable version
-4. Launch SKYM – a system tray icon will appear
+4. Launch SARU – a system tray icon will appear
 
 ### Loading Keys
 
-SKYM works with existing SSH keys loaded via:
+SARU works with existing SSH keys loaded via:
 - **ssh-add** (Windows OpenSSH)
 - **KeePass2** with [KeeAgent plugin](https://lechnology.com/software/keeagent/)
 - **KeePassXC** (built-in SSH agent support)
@@ -32,7 +32,7 @@ SKYM works with existing SSH keys loaded via:
 
 1. Load your SSH private key using one of the methods above
 2. Connect with any SSH client (PuTTY, OpenSSH, etc.)
-3. If confirmation is required, approve the signing request in the SKYM dialog
+3. If confirmation is required, approve the signing request in the SARU dialog
 4. Optionally select "Don't ask again for..." to remember your choice
 
 ## 🔧 Compatibility
@@ -43,7 +43,7 @@ SKYM works with existing SSH keys loaded via:
 |--------|---------|-------|
 | **PuTTY / Pageant** | ✅ Full | Enable Pageant compatibility in Settings |
 | **Windows OpenSSH** | ✅ Full | Enable named-pipe support in Settings |
-| **WSL2** | ✅ Full | Use `skym-npp` helper with socat or skym-ga|
+| **WSL2** | ✅ Full | Use `saru-npp` helper with socat or saru-ga|
 | **Hyper-V VMs** | ✅ Full | Configure access in Settings → Hyper-V, then enable guest integration |
 
 ### Supported Key Managers
@@ -61,13 +61,13 @@ SKYM works with existing SSH keys loaded via:
 
 ### Destination Constraints
 
-Restrict key usage to specific destinations using the `skym-dcc` tool:
+Restrict key usage to specific destinations using the `saru-dcc` tool:
 
 ```bash
 # Generate constraints file
-skym-dcc known_hosts constraints.cdc "awesome_host" "boring_host>cool_user@avesome_host"
+saru-dcc known_hosts constraints.cdc "awesome_host" "boring_host>cool_user@avesome_host"
 
-# Load into SKYM via GUI
+# Load into SARU via GUI
 # Key List → Select Key → Load Constraints
 ```
 
@@ -83,7 +83,7 @@ if grep -qEi "(Microsoft|WSL)" /proc/version &> /dev/null ; then
     ss -a | grep -q $SSH_AUTH_SOCK
     if [ $? -ne 0 ]; then
         rm -f $SSH_AUTH_SOCK
-        (setsid nohup socat UNIX-LISTEN:$SSH_AUTH_SOCK,fork EXEC:/path/to/skym-npp.exe >/dev/null 2>&1 &)
+        (setsid nohup socat UNIX-LISTEN:$SSH_AUTH_SOCK,fork EXEC:/path/to/saru-npp.exe >/dev/null 2>&1 &)
     fi
 fi
 ```
@@ -99,7 +99,7 @@ socat UNIX-LISTEN:$SSH_AUTH_SOCK,fork VSOCK-CONNECT:2:11888
 
 ## 📖 Documentation
 
-For detailed documentation, visit the [SKYM Documentation](https://github.com/michal-pod/skym-documentation) repository.
+For detailed documentation, visit the [SARU Documentation](https://github.com/michal-pod/saru-documentation) repository.
 
 ## 🛡️ Security Model
 
@@ -111,7 +111,7 @@ For detailed documentation, visit the [SKYM Documentation](https://github.com/mi
 
 ## 📄 License
 
-SKYM is licensed under the GNU General Public License v3.0 or later. See [LICENSE](LICENSE) for details.
+SARU is licensed under the GNU General Public License v3.0 or later. See [LICENSE](LICENSE) for details.
 
 ## 🙏 Acknowledgments
 
@@ -121,4 +121,4 @@ SKYM is licensed under the GNU General Public License v3.0 or later. See [LICENS
 
 ---
 
-**Need Help?** Open an [issue](https://github.com/michal-pod/skym/issues) or check the [documentation](https://github.com/michal-pod/skym-documentation).
+**Need Help?** Open an [issue](https://github.com/michal-pod/saru/issues) or check the [documentation](https://github.com/michal-pod/saru-documentation).

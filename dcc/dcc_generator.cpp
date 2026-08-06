@@ -1,5 +1,5 @@
 ﻿/*
- SKYM - SSH KeY Manager
+ SARU - SSH Agent Replacment Utility
  Copyright (C) 2025-2026 Michał Podsiadlik <michal@nglab.net>
 
  This program is free software: you can redistribute it and/or modify
@@ -74,7 +74,7 @@ bool DccGenerator::matchGlob(const std::string &pattern, const std::string &host
 }
 
 DccGenerator::DccGenerator(std::string knownHostsPath, std::string outPath)
-    : LogEnabler("skym-dcc"), m_knownHostsPath(std::move(knownHostsPath)), m_outPath(std::move(outPath))
+    : LogEnabler("saru-dcc"), m_knownHostsPath(std::move(knownHostsPath)), m_outPath(std::move(outPath))
 {
 }
 

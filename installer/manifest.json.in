@@ -1,13 +1,13 @@
 {
     "version" : "@VERSION@",
-    "architecture" : "@SKYM_ARCHITECTURE@",
+    "architecture" : "@SARU_ARCHITECTURE@",
     "files" : [
-        "@SKYMExePath@",
-        "@SKYMNPPExePath@",
+        "@SARUExePath@",
+        "@SARUNPPExePath@",
         "@SKYKDCCExePath@",
-        "@SKYMHVHExePath@",
+        "@SARUHVHExePath@",
         "@LICENSEFilePath@",
-        "@SKYMDocFilePath@",
-        "@SKYMGithubLink@"
+        "@SARUDocFilePath@",
+        "@SARUGithubLink@"
     ]
 }

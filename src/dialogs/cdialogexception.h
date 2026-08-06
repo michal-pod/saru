@@ -1,5 +1,5 @@
 ﻿/*
- SKYM - SSH KeY Manager
+ SARU - SSH Agent Replacment Utility
  Copyright (C) 2025-2026 Michał Podsiadlik <michal@nglab.net>
 
  This program is free software: you can redistribute it and/or modify
@@ -24,7 +24,7 @@
 #include "stdatl.h"
 #include "utils/string-converter.h"
 
-namespace nglab { namespace skym {
+namespace nglab { namespace saru {
 
 class DialogException : public std::exception {
 public:
@@ -55,8 +55,8 @@ public:
 
     void show(HWND parent) const {
         CTaskDialog dlg(parent);
-        auto wt = nglab::skym::StringConverter::u8w2(m_title);
-        auto wd = nglab::skym::StringConverter::u8w2(m_detail);
+        auto wt = nglab::saru::StringConverter::u8w2(m_title);
+        auto wd = nglab::saru::StringConverter::u8w2(m_detail);
         dlg.SetWindowTitle(wt.c_str());
         dlg.SetContentText(wd.c_str());
         dlg.SetMainIcon(TD_ERROR_ICON);

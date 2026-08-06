@@ -37,7 +37,7 @@
 
     <!-- Directories -->
     <StandardDirectory Id="ProgramFiles6432Folder">
-      <Directory Id="INSTALLFOLDER" Name="SKYM" />
+      <Directory Id="INSTALLFOLDER" Name="SARU" />
     </StandardDirectory>
 
     <StandardDirectory Id="ProgramMenuFolder">
@@ -54,26 +54,26 @@
           Value="1" KeyPath="yes" />
 
         <!-- Main executable and start menu folder -->
-        <File Id="SKYMExecutable" Source="$(var.SKYMExe)"
+        <File Id="SARUExecutable" Source="$(var.SARUExe)"
           Checksum="yes" />
         <Shortcut Id="ApplicationStartMenuShortcut" Directory="ApplicationProgramsFolder"
-          Advertise="no" Name="SKYM" WorkingDirectory="INSTALLFOLDER"
-          Description="SKYM - SSH Key Manager" Target="[#SKYMExecutable]"
+          Advertise="no" Name="SARU" WorkingDirectory="INSTALLFOLDER"
+          Description="SARU - SSH Key Manager" Target="[#SARUExecutable]"
         />
 
         <!-- Documentation -->
-        <File Id="SKYMHelpFile" Source="../installer/skym-sshkeymanager.pdf" />
+        <File Id="SARUHelpFile" Source="../installer/SARU-ssh-agent.pdf" />
         <Shortcut Id="HelpShortcut"
-          Name="SKYM Documentation"
-          Description="SKYM Documentation"
-          Target="[#SKYMHelpFile]"
+          Name="SARU Documentation"
+          Description="SARU Documentation"
+          Target="[#SARUHelpFile]"
           WorkingDirectory="INSTALLFOLDER"
           Directory="ApplicationProgramsFolder" />
 
         <!-- Helpers -->
-        <File Source="$(var.SKYMNPPExe)" Checksum="yes" />
+        <File Source="$(var.SARUNPPExe)" Checksum="yes" />
 
-        <File Source="$(var.SKYMHVHExe)" Checksum="yes" />
+        <File Source="$(var.SARUHVHExe)" Checksum="yes" />
 
         <File Source="$(var.SKYKDCCExe)" Checksum="yes" />
 
@@ -88,12 +88,12 @@
         Directory="INSTALLFOLDER">
         <RegistryValue Root="HKLM"
           Key="SOFTWARE\Microsoft\Windows NT\CurrentVersion\Virtualization\GuestCommunicationServices\00002E70-FACB-11E6-BD58-64006A7986D3"
-          Type="string" Name="ElementName" Value="SKYM Integration" KeyPath="yes" />
+          Type="string" Name="ElementName" Value="SARU Integration" KeyPath="yes" />
       </Component>
     </ComponentGroup>
 
     <!-- Main feature -->
-    <Feature Id="MainFeature" Title="SKYM" Level="1" AllowAbsent="no"
+    <Feature Id="MainFeature" Title="SARU" Level="1" AllowAbsent="no"
       Description="SSH Key Manager Main Application">
       <ComponentGroupRef Id="Components" />
     </Feature>

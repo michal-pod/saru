@@ -1,13 +1,13 @@
 package_config_data = configuration_data()
 package_config_data.set('VERSION', meson.project_version())
-package_config_data.set('SKYMExePath', skym.full_path().replace('\\', '/'))
-package_config_data.set('SKYMNPPExePath', skym_npp.full_path().replace('\\', '/'))
-package_config_data.set('SKYKDCCExePath', skym_dcc.full_path().replace('\\', '/'))
-package_config_data.set('SKYMHVHExePath', skym_hvh.full_path().replace('\\', '/'))
-package_config_data.set('SKYM_ARCHITECTURE', skym_architecture)
+package_config_data.set('SARUExePath', saru.full_path().replace('\\', '/'))
+package_config_data.set('SARUNPPExePath', saru_npp.full_path().replace('\\', '/'))
+package_config_data.set('SKYKDCCExePath', saru_dcc.full_path().replace('\\', '/'))
+package_config_data.set('SARUHVHExePath', saru_hvh.full_path().replace('\\', '/'))
+package_config_data.set('SARU_ARCHITECTURE', saru_architecture)
 package_config_data.set('LICENSEFilePath', meson.source_root().replace('\\', '/') + '/LICENSE')
-package_config_data.set('SKYMDocFilePath', meson.current_source_dir().replace('\\', '/') + '/skym-sshkeymanager.pdf')
-package_config_data.set('SKYMGithubLink', meson.current_source_dir().replace('\\', '/') + '/SKYM.url')
+package_config_data.set('SARUDocFilePath', meson.current_source_dir().replace('\\', '/') + '/saru-ssh-agent.pdf')
+package_config_data.set('SARUGithubLink', meson.current_source_dir().replace('\\', '/') + '/SARU.url')
 
 build_config = configure_file(
   input: 'buildInfo.wxi.in',
@@ -23,13 +23,13 @@ package_config_data_file = configure_file(
 
 
 # Build package
-package_file_name = 'SKYM-' + meson.project_version() + '-' + config_data.get('SKYM_ARCHITECTURE')
+package_file_name = 'SARU-' + meson.project_version() + '-' + config_data.get('SARU_ARCHITECTURE')
 
 msi_package = custom_target(
   'generate_installer',
   input: [
     build_config,
-    'skym.wxs',
+    'saru.wxs',
     'en-US.wxl',
     'VCRuntimeDetection.wxi',
     'WindowsDetection.wxi',
@@ -49,16 +49,16 @@ msi_package = custom_target(
     '-out', '@OUTPUT0@',
     '@INPUT1@',
     '@INPUT2@',
-    '-d', 'Platform=' + config_data.get('SKYM_ARCHITECTURE'),
-    '-arch', config_data.get('SKYM_ARCHITECTURE'),
+    '-d', 'Platform=' + config_data.get('SARU_ARCHITECTURE'),
+    '-arch', config_data.get('SARU_ARCHITECTURE'),
     '-d', 'Configuration=Release',
     '-i', meson.current_build_dir(),
   ],
   depends: [
-    skym,
-    skym_npp,
-    skym_dcc,
-    skym_hvh,
+    saru,
+    saru_npp,
+    saru_dcc,
+    saru_hvh,
   ],
   build_by_default : true,
 )
@@ -91,10 +91,10 @@ zip_package = custom_target(
     '@OUTPUT@',
   ],
   depends: [
-    skym,
-    skym_npp,
-    skym_dcc,
-    skym_hvh,
+    saru,
+    saru_npp,
+    saru_dcc,
+    saru_hvh,
   ],
   build_by_default : true,
 )

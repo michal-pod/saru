@@ -1,5 +1,5 @@
 ﻿/*
- SKYM - SSH KeY Manager
+ SARU - SSH Agent Replacment Utility
  Copyright (C) 2025-2026 Michał Podsiadlik <michal@nglab.net>
 
  This program is free software: you can redistribute it and/or modify
@@ -32,7 +32,7 @@
 
 namespace nglab
 {
-    namespace skym
+    namespace saru
     {
         using nglab::libssha::KeyManager;
         using std::chrono::steady_clock;
@@ -82,7 +82,7 @@ namespace nglab
 
             CRegKey key;
             bool createHyperV = false;
-            if(key.Open(HKEY_CURRENT_USER, SKYM_KEY_ROOT, KEY_READ) == ERROR_SUCCESS){
+            if(key.Open(HKEY_CURRENT_USER, SARU_KEY_ROOT, KEY_READ) == ERROR_SUCCESS){
                 DWORD val;
                 if(key.QueryDWORDValue("NamedPipe", val) == ERROR_SUCCESS){
                     createNamedPipe = (val != 0);
@@ -160,7 +160,7 @@ namespace nglab
                     for(auto & client : m_Clients){
                         session_counts[client->type()]++;
                     }
-                    std::string info_str = "SKYM Agent Sessions: ";
+                    std::string info_str = "SARU Agent Sessions: ";
                     for(auto& [type,count] : session_counts){
                         info_str += std::format("{}={}, ", type, count);
                     }
@@ -287,5 +287,5 @@ namespace nglab
                 }
             }
         }
-    } // namespace skym
+    } // namespace saru
 } // namespace nglab

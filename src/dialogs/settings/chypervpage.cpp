@@ -1,5 +1,5 @@
 ﻿/*
- SKYM - SSH KeY Manager
+ SARU - SSH Agent Replacment Utility
  Copyright (C) 2025-2026 Michał Podsiadlik <michal@nglab.net>
 
  This program is free software: you can redistribute it and/or modify
@@ -27,7 +27,7 @@
 #include <thread>
 
 
-using namespace nglab::skym;
+using namespace nglab::saru;
 
 CHyperVPage::CHyperVPage() : CPropertyPageImpl<CHyperVPage>(_T("Hyper-V")), LogEnabler("CHyperVPage")
 {
@@ -84,9 +84,9 @@ LRESULT CHyperVPage::OnHelperExited(UINT, WPARAM wParam, LPARAM lParam, BOOL &)
 
 int CHyperVPage::OnApply()
 {
-    // Persist current m_items into HKCU\Software\SKYM\HyperVVMs\<guid>\Enabled and Description
+    // Persist current m_items into HKCU\Software\SARU\HyperVVMs\<guid>\Enabled and Description
     CRegKey rootKey;
-    LONG rc = rootKey.Create(HKEY_CURRENT_USER, SKYM_KEY_ROOT "\\HyperVVMs");
+    LONG rc = rootKey.Create(HKEY_CURRENT_USER, SARU_KEY_ROOT "\\HyperVVMs");
     if (rc != ERROR_SUCCESS)
     {
         log.error("Failed to create/open HyperVVMs registry key: {}", rc);
@@ -96,7 +96,7 @@ int CHyperVPage::OnApply()
     for (size_t i = 0; i < m_items.size(); ++i)
     {
         const auto &it = m_items[i];
-        std::string subpath = std::string(SKYM_KEY_ROOT "\\HyperVVMs\\") + it.guid;
+        std::string subpath = std::string(SARU_KEY_ROOT "\\HyperVVMs\\") + it.guid;
         CRegKey vmKey;
         LONG r2 = vmKey.Create(HKEY_CURRENT_USER, subpath.c_str());
         if (r2 != ERROR_SUCCESS)
@@ -164,10 +164,10 @@ LRESULT CHyperVPage::OnDelete(WORD, WORD, HWND, BOOL &)
             return 0;
         }
         CRegKey rootKey;
-        LONG rc = rootKey.Open(HKEY_CURRENT_USER, SKYM_KEY_ROOT "\\HyperVVMs", KEY_WRITE);
+        LONG rc = rootKey.Open(HKEY_CURRENT_USER, SARU_KEY_ROOT "\\HyperVVMs", KEY_WRITE);
         if (rc == ERROR_SUCCESS)
         {
-            std::string subpath = std::string(SKYM_KEY_ROOT "\\HyperVVMs\\") + m_items[index].guid;
+            std::string subpath = std::string(SARU_KEY_ROOT "\\HyperVVMs\\") + m_items[index].guid;
             CRegKey vmKey;
             LONG r2 = vmKey.Open(HKEY_CURRENT_USER, subpath.c_str(), KEY_WRITE);
             if (r2 == ERROR_SUCCESS)
@@ -204,7 +204,7 @@ LRESULT CHyperVPage::OnRescan(WORD, WORD, HWND, BOOL &)
         sei.fMask = SEE_MASK_NOCLOSEPROCESS;
         sei.hwnd = NULL;
         sei.lpVerb = _T("runas");
-        std::string helperPath = Directories::getExecutableDirectoryA() + "\\skym-hvh.exe";
+        std::string helperPath = Directories::getExecutableDirectoryA() + "\\saru-hvh.exe";
         sei.lpFile = helperPath.c_str();
 
         BOOL result = ShellExecuteEx(&sei);
@@ -263,7 +263,7 @@ void CHyperVPage::reloadList()
     m_list.DeleteAllItems();
     m_items.clear();
 
-    if (key.Open(HKEY_CURRENT_USER, SKYM_KEY_ROOT "\\HyperVVMs", KEY_READ) == ERROR_SUCCESS)
+    if (key.Open(HKEY_CURRENT_USER, SARU_KEY_ROOT "\\HyperVVMs", KEY_READ) == ERROR_SUCCESS)
     {
         // Read VM information from the registry and populate the list control
         int index = 0;
@@ -279,7 +279,7 @@ void CHyperVPage::reloadList()
             // For each VM, read its properties and add them to the list control
             log.debug("Found VM GUID: {}", vmGuid);
             CRegKey vmKey;
-            std::string vmPath = SKYM_KEY_ROOT "\\HyperVVMs\\" + std::string(vmGuid);
+            std::string vmPath = SARU_KEY_ROOT "\\HyperVVMs\\" + std::string(vmGuid);
             if (vmKey.Open(HKEY_CURRENT_USER, vmPath.c_str(), KEY_READ) == ERROR_SUCCESS)
             {
                 // Read VM properties from the registry

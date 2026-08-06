@@ -1,5 +1,5 @@
 ﻿/*
- SKYM - SSH KeY Manager
+ SARU - SSH Agent Replacment Utility
  Copyright (C) 2025-2026 Michał Podsiadlik <michal@nglab.net>
 
  This program is free software: you can redistribute it and/or modify
@@ -35,10 +35,10 @@
 #include "dialogs/cdialogexception.h"
 #include "config.h"
 
-using namespace nglab::skym;
+using namespace nglab::saru;
 namespace
 {
-    constexpr GUID SKYM_TRAY_ICON_GUID = {0xc763880f, 0x8741, 0x4d11, {0xa6, 0x83, 0xc7, 0x5, 0x3c, 0xf7, 0x18, 0x5e}};
+    constexpr GUID SARU_TRAY_ICON_GUID = {0xc763880f, 0x8741, 0x4d11, {0xa6, 0x83, 0xc7, 0x5, 0x3c, 0xf7, 0x18, 0x5e}};
     enum
     {
         TIMER_ID_REFRESH_LIFETIME = 1,
@@ -157,10 +157,10 @@ LRESULT CKeyList::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bH
     nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
     nid.uCallbackMessage = WM_TRAYNOTIFY;
     nid.hIcon = LoadIcon(_Module.GetResourceInstance(), MAKEINTRESOURCE(IDI_ICON1));
-    nid.guidItem = SKYM_TRAY_ICON_GUID;
+    nid.guidItem = SARU_TRAY_ICON_GUID;
     nid.uVersion = NOTIFYICON_VERSION_4;
     // Copy tooltip text with strncpy and explicit null-termination
-    strncpy(nid.szTip, _T("SSH Key Manager"), sizeof(nid.szTip) - 1);
+    strncpy(nid.szTip, _T("SSH Key Agent"), sizeof(nid.szTip) - 1);
     nid.szTip[sizeof(nid.szTip) - 1] = '\0';
 
     Shell_NotifyIcon(NIM_ADD, &nid);
@@ -201,7 +201,7 @@ LRESULT CKeyList::OnDestroyDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL 
     nid.cbSize = sizeof(NOTIFYICONDATA);
     nid.hWnd = m_hWnd;
     nid.uID = 1;
-    nid.guidItem = SKYM_TRAY_ICON_GUID;
+    nid.guidItem = SARU_TRAY_ICON_GUID;
 
     Shell_NotifyIcon(NIM_DELETE, &nid);
 
@@ -359,7 +359,7 @@ LRESULT CKeyList::OnShow(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandle
 }
 LRESULT CKeyList::OnShowDebugConsole(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled)
 {
-    auto &console = nglab::skym::DebugConsole::instance();
+    auto &console = nglab::saru::DebugConsole::instance();
     // std::string msg = "Toggling debug console visibility " + std::to_string(wNotifyCode) + " " + std::to_string(wID) + " " + std::to_string(reinterpret_cast<uintptr_t>(hWndCtl));
     log.debug("Toggling debug console visibility wNotifyCode={}, wID={}, hWndCtl={}", wNotifyCode, wID, reinterpret_cast<uintptr_t>(hWndCtl));
     if (console.isVisible())
@@ -433,7 +433,7 @@ void CKeyList::keyAdded(nglab::libssha::KeyBasePtr key)
                 m_userLoadedConstraints.insert(key->fingerprint());
             }
         }
-        catch (const nglab::skym::DialogException &e)
+        catch (const nglab::saru::DialogException &e)
         {
             e.show(m_hWnd);
         }
@@ -497,7 +497,7 @@ void CKeyList::onKeyUsed(nglab::libssha::KeyBasePtr key, const nglab::libssha::S
 {
     log.info("Key used: {} in session", key->fingerprint());
     CRegKey reg_key;
-    if (reg_key.Open(HKEY_CURRENT_USER, SKYM_KEY_ROOT, KEY_READ) == ERROR_SUCCESS)
+    if (reg_key.Open(HKEY_CURRENT_USER, SARU_KEY_ROOT, KEY_READ) == ERROR_SUCCESS)
     {
         DWORD notifyKeyUsage = 0;
         if (reg_key.QueryDWORDValue("NotifyKeyUsage", notifyKeyUsage) == ERROR_SUCCESS && notifyKeyUsage == 1)
@@ -512,7 +512,7 @@ void CKeyList::onKeyDeclined(nglab::libssha::KeyBasePtr key, const nglab::libssh
 {
     log.info("Key usage declined: {} in session", key->fingerprint());
     CRegKey reg_key;
-    if (reg_key.Open(HKEY_CURRENT_USER, SKYM_KEY_ROOT, KEY_READ) == ERROR_SUCCESS)
+    if (reg_key.Open(HKEY_CURRENT_USER, SARU_KEY_ROOT, KEY_READ) == ERROR_SUCCESS)
     {
         DWORD notifyKeyDeclined = 0;
         if (reg_key.QueryDWORDValue("NotifyKeyDeclined", notifyKeyDeclined) == ERROR_SUCCESS && notifyKeyDeclined == 1)
@@ -769,7 +769,7 @@ LRESULT CKeyList::OnLoadConstraint(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOO
             m_userLoadedConstraints.insert(selectedKey->fingerprint());
             updateKeyDetails();
         }
-        catch (const nglab::skym::DialogException &e)
+        catch (const nglab::saru::DialogException &e)
         {
             e.show(m_hWnd);
         }
@@ -851,7 +851,7 @@ LRESULT CKeyList::OnAbout(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandl
 bool CKeyList::shouldNotifyKeyOperations()
 {
     CRegKey reg_key;
-    if (reg_key.Open(HKEY_CURRENT_USER, SKYM_KEY_ROOT, KEY_READ) == ERROR_SUCCESS)
+    if (reg_key.Open(HKEY_CURRENT_USER, SARU_KEY_ROOT, KEY_READ) == ERROR_SUCCESS)
     {
         DWORD notifyKeyOperations = 0;
         if (reg_key.QueryDWORDValue("KeyOperations", notifyKeyOperations) == ERROR_SUCCESS && notifyKeyOperations == 1)

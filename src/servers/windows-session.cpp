@@ -1,5 +1,5 @@
 ﻿/*
- SKYM - SSH KeY Manager
+ SARU - SSH Agent Replacment Utility
  Copyright (C) 2025-2026 Michał Podsiadlik <michal@nglab.net>
 
  This program is free software: you can redistribute it and/or modify
@@ -17,7 +17,7 @@
 */
 #include "windows-session.h"
 
-using namespace nglab::skym;
+using namespace nglab::saru;
 
 std::unordered_map<std::string, ConfirmMemory> ConfirmMemory::ms_memory;
 

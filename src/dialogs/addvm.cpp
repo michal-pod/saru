@@ -1,5 +1,5 @@
 ﻿/*
- SKYM - SSH KeY Manager
+ SARU - SSH Agent Replacment Utility
  Copyright (C) 2025-2026 Michał Podsiadlik <michal@nglab.net>
 
  This program is free software: you can redistribute it and/or modify
@@ -21,7 +21,7 @@
 
 #include "config.h"
 
-using namespace nglab::skym;
+using namespace nglab::saru;
 
 LRESULT CAddVMDialog::OnInitDialog(UINT, WPARAM, LPARAM, BOOL &)
 {
@@ -45,7 +45,7 @@ LRESULT CAddVMDialog::OnCloseCmd(WORD, WORD wID, HWND, BOOL &)
     {
         log.info("Adding VM with GUID: {}", m_guid);
         CRegKey key;
-        std::string regPath = SKYM_KEY_ROOT "\\HyperVVMs\\" + m_guid;
+        std::string regPath = SARU_KEY_ROOT "\\HyperVVMs\\" + m_guid;
         if (key.Create(HKEY_CURRENT_USER, regPath.c_str()) == ERROR_SUCCESS)
         {
             CString vmName;

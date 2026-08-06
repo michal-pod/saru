@@ -3,7 +3,7 @@ from conan import ConanFile
 from conan.tools.meson import Meson, MesonToolchain
 from conan.tools.gnu import PkgConfigDeps
 
-class SKYMRecipe(ConanFile):
+class SARURecipe(ConanFile):
     settings = "os", "compiler", "build_type", "arch"
 
     def layout(self):        

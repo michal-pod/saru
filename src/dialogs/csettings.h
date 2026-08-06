@@ -1,5 +1,5 @@
 ﻿/*
- SKYM - SSH KeY Manager
+ SARU - SSH Agent Replacment Utility
  Copyright (C) 2025-2026 Michał Podsiadlik <michal@nglab.net>
 
  This program is free software: you can redistribute it and/or modify
@@ -24,7 +24,7 @@
 
 namespace nglab
 {
-    namespace skym
+    namespace saru
     {
 
         class CSettingsSheet : public CPropertySheetImpl<CSettingsSheet>

@@ -1,5 +1,5 @@
 ﻿/*
- SKYM - SSH KeY Manager
+ SARU - SSH Agent Replacment Utility
  Copyright (C) 2025-2026 Michał Podsiadlik <michal@nglab.net>
 
  This program is free software: you can redistribute it and/or modify
@@ -175,7 +175,7 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
                 fwprintf(stdout, L"VM: %s\n  ElementName: %s\n  InstanceID: %s\n  EnabledState: %u\n  Description: %s\n\n",
                         vmGuid.c_str(), elementName.c_str(), instanceID.c_str(), enabledState, description.c_str());
                 CRegKey regKey;
-                std::wstring regPath = std::wstring(SKYM_KEY_ROOT_W) + L"\\HyperVVMs\\" + vmGuid;
+                std::wstring regPath = std::wstring(SARU_KEY_ROOT_W) + L"\\HyperVVMs\\" + vmGuid;
                 // Create the registry key
                 bool created = false;
                 DWORD dwDisposition;

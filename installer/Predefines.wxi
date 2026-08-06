@@ -2,7 +2,7 @@
 <Include xmlns="http://wixtoolset.org/schemas/v4/wxs">
     <?include buildInfo.wxi?>
 
-    <?define AppName = "SKYM"?>
+    <?define AppName = "SARU"?>
     <?define Manufacturer = "nglab.net"?>
 
     <?if $(var.Configuration) = Debug?>    

@@ -1,5 +1,5 @@
 ﻿/*
- SKYM - SSH KeY Manager
+ SARU - SSH Agent Replacment Utility
  Copyright (C) 2025-2026 Michał Podsiadlik <michal@nglab.net>
 
  This program is free software: you can redistribute it and/or modify
@@ -46,7 +46,7 @@ public:
     LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL &)
     {
         CRegKey key;
-        if (key.Open(HKEY_CURRENT_USER, _T(SKYM_KEY_ROOT), KEY_READ) == ERROR_SUCCESS)
+        if (key.Open(HKEY_CURRENT_USER, _T(SARU_KEY_ROOT), KEY_READ) == ERROR_SUCCESS)
         {
             DWORD val = 0;
             if (key.QueryDWORDValue("NotifyKeyUsage", val) == ERROR_SUCCESS)
@@ -132,7 +132,7 @@ public:
         m_ForceOnTop = (IsDlgButtonChecked(IDC_FORCE_ON_TOP) == BST_CHECKED);
 
         CRegKey key;
-        if (key.Create(HKEY_CURRENT_USER, _T(SKYM_KEY_ROOT)) == ERROR_SUCCESS)
+        if (key.Create(HKEY_CURRENT_USER, _T(SARU_KEY_ROOT)) == ERROR_SUCCESS)
         {
             key.SetDWORDValue(_T("NotifyKeyUsage"), m_NotifyKeyUsage);
             key.SetDWORDValue(_T("AlwaysConfirm"), m_AlwaysConfirm);

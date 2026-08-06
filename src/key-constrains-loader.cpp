@@ -1,5 +1,5 @@
 ﻿/*
- SKYM - SSH KeY Manager
+ SARU - SSH Agent Replacment Utility
  Copyright (C) 2025-2026 Michał Podsiadlik <michal@nglab.net>
 
  This program is free software: you can redistribute it and/or modify
@@ -28,7 +28,7 @@
 #include "dialogs/cdialogexception.h"
 #include "config.h"
 
-using namespace nglab::skym;
+using namespace nglab::saru;
 using nglab::libssha::Deserializer;
 using nglab::libssha::KeyBase;
 using nglab::libssha::KeyBasePtr;
@@ -74,7 +74,7 @@ bool KeyConstrainsLoader::loadConstraintsInt(KeyBasePtr key, const std::string &
     if (!key)
     {
         log.error("Cannot load constraints: key is null");
-        throw nglab::skym::DialogException("Invalid key|Cannot load constraints: key is null");
+        throw nglab::saru::DialogException("Invalid key|Cannot load constraints: key is null");
     }
 
     // If path is empty then check registry if there is a stored path and signature
@@ -85,7 +85,7 @@ bool KeyConstrainsLoader::loadConstraintsInt(KeyBasePtr key, const std::string &
     if (path.empty())
     {
         log.vdebug("No path specified, checking registry for stored constraints for key {}", key->fingerprint(PubKeyBase::FingerprintFormat::Sha256Hex));
-        std::string key_name(SKYM_KEY_ROOT "\\KeyConstraints\\");
+        std::string key_name(SARU_KEY_ROOT "\\KeyConstraints\\");
         key_name += key->fingerprint(PubKeyBase::Sha256Hex);
         CRegKey reg_key;
         if (reg_key.Open(HKEY_CURRENT_USER, key_name.c_str(), KEY_READ) == ERROR_SUCCESS)
@@ -133,7 +133,7 @@ bool KeyConstrainsLoader::loadConstraintsInt(KeyBasePtr key, const std::string &
             if (fileSize == 0 || fileSize > 512 * 1024)
         {
             log.error("Selected file {} is {}", load_path, fileSize == 0 ? "empty" : "too large");
-            throw nglab::skym::DialogException(std::format("File error|Selected file {} is {}", load_path, fileSize == 0 ? "empty" : "too large"));
+            throw nglab::saru::DialogException(std::format("File error|Selected file {} is {}", load_path, fileSize == 0 ? "empty" : "too large"));
         }
         fileStream.seekg(0, std::ios::beg);
 
@@ -143,23 +143,23 @@ bool KeyConstrainsLoader::loadConstraintsInt(KeyBasePtr key, const std::string &
         fileStream.read(reinterpret_cast<char *>(data.data()), fileSize);
 
         if(persistent){
-            // copy the selected file into %APPDATA%\SKYM\<fingerprint>.cdc and use that path
+            // copy the selected file into %APPDATA%\SARU\<fingerprint>.cdc and use that path
             try {
                 std::string appdir = Directories::getAppDataDirectoryA();
-                std::filesystem::path skymdir = std::filesystem::path(appdir) / "SKYM";
+                std::filesystem::path sarudir = std::filesystem::path(appdir) / "SARU";
                 std::error_code ec;
-                std::filesystem::create_directories(skymdir, ec);
+                std::filesystem::create_directories(sarudir, ec);
                 if (ec) {
-                    log.error("Failed to create appdata SKYM directory: {}", ec.message());
-                    throw nglab::skym::DialogException(std::format("Filesystem error|Failed to create appdata SKYM directory: {}", ec.message()));
+                    log.error("Failed to create appdata SARU directory: {}", ec.message());
+                    throw nglab::saru::DialogException(std::format("Filesystem error|Failed to create appdata SARU directory: {}", ec.message()));
                 }
                 std::filesystem::path src(load_path);
                 std::string fname = key->fingerprint(PubKeyBase::FingerprintFormat::Sha256Hex) + ".cdc";
-                std::filesystem::path dst = skymdir / fname;
+                std::filesystem::path dst = sarudir / fname;
                 std::filesystem::copy_file(src, dst, std::filesystem::copy_options::overwrite_existing, ec);
                 if (ec) {
                     log.error("Failed to copy constraints file to {}: {}", dst.string(), ec.message());
-                    throw nglab::skym::DialogException(std::format("Filesystem error|Failed to copy constraints file to {}: {}", dst.string(), ec.message()));
+                    throw nglab::saru::DialogException(std::format("Filesystem error|Failed to copy constraints file to {}: {}", dst.string(), ec.message()));
                 }
                 load_path = dst.string();
                 log.vdebug("Copied constraints to {}", load_path);
@@ -187,7 +187,7 @@ bool KeyConstrainsLoader::loadConstraintsInt(KeyBasePtr key, const std::string &
             if (key->pubKey().verify(data, signature) == false)
             {
                 log.error("Signature verification failed for loaded constraints for key {}", key->fingerprint());
-                throw nglab::skym::DialogException("Signature verification failed|Signature verification failed for loaded constraints");
+                throw nglab::saru::DialogException("Signature verification failed|Signature verification failed for loaded constraints");
             }
 
             log.trace("Signature verification succeeded for loaded constraints for key {}, size of signature {}",
@@ -200,20 +200,20 @@ bool KeyConstrainsLoader::loadConstraintsInt(KeyBasePtr key, const std::string &
         catch (const std::exception &e)
         {
             log.error("Failed to deserialize file: {}", e.what());
-            throw nglab::skym::DialogException(std::string("Deserialize error|") + e.what());
+            throw nglab::saru::DialogException(std::string("Deserialize error|") + e.what());
         }
     }
     else
     {
         log.error("Failed to open file: {}", load_path);
-        throw nglab::skym::DialogException(std::format("File open error|Failed to open file: {}", load_path));
+        throw nglab::saru::DialogException(std::format("File open error|Failed to open file: {}", load_path));
     }
     // Load constraints from the specified path, calculate signature then
     /// store path and signature in registry if persistent is true.
     if (persistent)
     {
         CRegKey reg_key;
-        std::string key_name = SKYM_KEY_ROOT "\\KeyConstraints\\" + key->fingerprint(PubKeyBase::FingerprintFormat::Sha256Hex);
+        std::string key_name = SARU_KEY_ROOT "\\KeyConstraints\\" + key->fingerprint(PubKeyBase::FingerprintFormat::Sha256Hex);
         if (reg_key.Create(HKEY_CURRENT_USER, key_name.c_str()) == ERROR_SUCCESS)
         {
             reg_key.SetStringValue("Path", load_path.c_str());
@@ -224,7 +224,7 @@ bool KeyConstrainsLoader::loadConstraintsInt(KeyBasePtr key, const std::string &
         else
         {
             log.error("Failed to open/create registry key for storing constraints for key {}", key->fingerprint());
-            throw nglab::skym::DialogException("Registry error|Failed to open/create registry key for storing constraints");
+            throw nglab::saru::DialogException("Registry error|Failed to open/create registry key for storing constraints");
         }
     }
 
@@ -244,7 +244,7 @@ void KeyConstrainsLoader::unloadConstraintsInt(KeyBasePtr key, bool deletePersis
 
     // If deletePersistent is true, remove stored path and signature from registry
     CRegKey reg_key;
-    std::string key_name = SKYM_KEY_ROOT "\\KeyConstraints\\" + key->fingerprint(PubKeyBase::FingerprintFormat::Sha256Hex);
+    std::string key_name = SARU_KEY_ROOT "\\KeyConstraints\\" + key->fingerprint(PubKeyBase::FingerprintFormat::Sha256Hex);
     if (deletePersistent && reg_key.Open(HKEY_CURRENT_USER, key_name.c_str(), KEY_WRITE) == ERROR_SUCCESS)
     {
         if (deletePersistent)
@@ -265,7 +265,7 @@ bool KeyConstrainsLoader::needConfirmationInt(KeyBasePtr key)
     }
 
     CRegKey reg_key;
-    std::string key_name = SKYM_KEY_ROOT "\\KeyConstraints\\" + key->fingerprint(PubKeyBase::FingerprintFormat::Sha256Hex);
+    std::string key_name = SARU_KEY_ROOT "\\KeyConstraints\\" + key->fingerprint(PubKeyBase::FingerprintFormat::Sha256Hex);
     if (reg_key.Open(HKEY_CURRENT_USER, key_name.c_str(), KEY_READ) == ERROR_SUCCESS)
     {
         DWORD needConfirm = 0;
@@ -287,7 +287,7 @@ void KeyConstrainsLoader::setNeedConfirmationInt(KeyBasePtr key, bool need)
     }
 
     CRegKey reg_key;
-    std::string key_name = SKYM_KEY_ROOT "\\KeyConstraints\\" + key->fingerprint(PubKeyBase::FingerprintFormat::Sha256Hex);
+    std::string key_name = SARU_KEY_ROOT "\\KeyConstraints\\" + key->fingerprint(PubKeyBase::FingerprintFormat::Sha256Hex);
     if (reg_key.Create(HKEY_CURRENT_USER, key_name.c_str()) == ERROR_SUCCESS)
     {
         reg_key.SetDWORDValue("NeedConfirmation", need ? 1 : 0);
@@ -297,6 +297,6 @@ void KeyConstrainsLoader::setNeedConfirmationInt(KeyBasePtr key, bool need)
     else
     {
         log.error("Failed to open/create registry key for setting need confirmation for key {}", key->fingerprint());
-        throw nglab::skym::DialogException("Registry error|Failed to open/create registry key for setting need confirmation");
+        throw nglab::saru::DialogException("Registry error|Failed to open/create registry key for setting need confirmation");
     }
 }

@@ -1,5 +1,5 @@
 ﻿/*
- SKYM - SSH KeY Manager
+ SARU - SSH Agent Replacment Utility
  Copyright (C) 2025-2026 Michał Podsiadlik <michal@nglab.net>
 
  This program is free software: you can redistribute it and/or modify
@@ -23,12 +23,12 @@
 #include "stdatl.h"
 #include "config.h"
 
-using namespace nglab::skym;
+using namespace nglab::saru;
 
 DebugConsole::DebugConsole() : LogEnabler("DebugConsole")
 {
     CRegKey key;
-    if (key.Open(HKEY_CURRENT_USER, _T(SKYM_KEY_ROOT), KEY_READ) == ERROR_SUCCESS)
+    if (key.Open(HKEY_CURRENT_USER, _T(SARU_KEY_ROOT), KEY_READ) == ERROR_SUCCESS)
     {
         DWORD val = 0;
         if (key.QueryDWORDValue("EnableDebugConsole", val) == ERROR_SUCCESS)

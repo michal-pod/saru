@@ -1,5 +1,5 @@
 ﻿/*
- SKYM - SSH KeY Manager
+ SARU - SSH Agent Replacment Utility
  Copyright (C) 2025-2026 Michał Podsiadlik <michal@nglab.net>
 
  This program is free software: you can redistribute it and/or modify
@@ -23,7 +23,7 @@
 
 #include "servers/windows-session.h"
 
-using namespace nglab::skym;
+using namespace nglab::saru;
 
 CKeySelectionDlg::CKeySelectionDlg(KeyListProvider keyListProvider, const ClientInfo &clientInfo, WindowsSessionType sessionType)
     : CUserInputDialog<CKeySelectionDlg>(clientInfo),

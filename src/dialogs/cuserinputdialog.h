@@ -1,5 +1,5 @@
 ﻿/*
- SKYM - SSH KeY Manager
+ SARU - SSH Agent Replacment Utility
  Copyright (C) 2025-2026 Michał Podsiadlik <michal@nglab.net>
 
  This program is free software: you can redistribute it and/or modify
@@ -26,7 +26,7 @@
 
 namespace nglab
 {
-    namespace skym
+    namespace saru
     {
         using namespace ATL;
         using nglab::libssha::LogEnabler;
@@ -57,7 +57,7 @@ namespace nglab
                 m_cancelButton.SetIcon(IconFactory::get(IDI_CANCEL));
 
                 CRegKey key;
-                if (key.Open(HKEY_CURRENT_USER, _T(SKYM_KEY_ROOT)) == ERROR_SUCCESS)
+                if (key.Open(HKEY_CURRENT_USER, _T(SARU_KEY_ROOT)) == ERROR_SUCCESS)
                 {
                     DWORD timeout = 0;
                     if (key.QueryDWORDValue(_T("AutoDecline"), timeout) == ERROR_SUCCESS && timeout > 0)
@@ -123,7 +123,7 @@ namespace nglab
 
                 CRegKey key;
                 bool forceOnTop = true;
-                if (key.Open(HKEY_CURRENT_USER, _T(SKYM_KEY_ROOT)) == ERROR_SUCCESS)
+                if (key.Open(HKEY_CURRENT_USER, _T(SARU_KEY_ROOT)) == ERROR_SUCCESS)
                 {
                     DWORD val = 0;
                     if (key.QueryDWORDValue("ForceNotificationOnTop", val) == ERROR_SUCCESS)

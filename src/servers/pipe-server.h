@@ -1,5 +1,5 @@
 ﻿/*
- SKYM - SSH KeY Manager
+ SARU - SSH Agent Replacment Utility
  Copyright (C) 2025-2026 Michał Podsiadlik <michal@nglab.net>
 
  This program is free software: you can redistribute it and/or modify
@@ -29,7 +29,7 @@
 
 namespace nglab
 {
-    namespace skym
+    namespace saru
     {
         using nglab::libssha::LogEnabler;
         class PipeServer : public LogEnabler
@@ -50,5 +50,5 @@ namespace nglab
             static constexpr size_t MaxClients = (MAXIMUM_WAIT_OBJECTS - 1) / 3;
             bool hasClientCapacity() const { return m_Clients.size() < MaxClients; }
         };
-    } // namespace skym
+    } // namespace saru
 } // namespace nglab

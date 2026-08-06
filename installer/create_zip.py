@@ -10,7 +10,7 @@ out_zip.parent.mkdir(parents=True, exist_ok=True)
 with zipfile.ZipFile(out_zip, 'w', zipfile.ZIP_DEFLATED) as z:
     for f in data['files']:
         p = pathlib.Path(f)
-        z.write(p, 'SKYM/' + p.name)
+        z.write(p, 'SARU/' + p.name)
 
     
     

@@ -1,5 +1,5 @@
 ﻿/*
- SKYM - SSH KeY Manager
+ SARU - SSH Agent Replacment Utility
  Copyright (C) 2025-2026 Michał Podsiadlik <michal@nglab.net>
 
  This program is free software: you can redistribute it and/or modify
@@ -34,7 +34,7 @@
 
 namespace nglab
 {
-    namespace skym
+    namespace saru
     {
         using nglab::libssha::ExtensionMessage;
         using nglab::libssha::LogEnabler;
@@ -175,7 +175,7 @@ namespace nglab
             bool requiresConfirmation(const KeyBasePtr key) const
             {
                 CRegKey reg_key;
-                if (reg_key.Open(HKEY_CURRENT_USER, SKYM_KEY_ROOT, KEY_READ) == ERROR_SUCCESS)
+                if (reg_key.Open(HKEY_CURRENT_USER, SARU_KEY_ROOT, KEY_READ) == ERROR_SUCCESS)
                 {
                     DWORD val;
                     if (reg_key.QueryDWORDValue("AlwaysConfirm", val) == ERROR_SUCCESS)
@@ -192,7 +192,7 @@ namespace nglab
             void processRequestIdentities(const nglab::libssha::Message &msg)
             {
                 CRegKey key;
-                if (key.Open(HKEY_CURRENT_USER, SKYM_KEY_ROOT, KEY_READ) == ERROR_SUCCESS)
+                if (key.Open(HKEY_CURRENT_USER, SARU_KEY_ROOT, KEY_READ) == ERROR_SUCCESS)
                 {
                     DWORD showKeySelection = 0;
                     if (key.QueryDWORDValue("ShowKeySelection", showKeySelection) == ERROR_SUCCESS && showKeySelection == 1)

@@ -1,5 +1,5 @@
 ﻿/*
- SKYM - SSH KeY Manager
+ SARU - SSH Agent Replacment Utility
  Copyright (C) 2025-2026 Michał Podsiadlik <michal@nglab.net>
 
  This program is free software: you can redistribute it and/or modify
@@ -62,7 +62,7 @@ public:
 
 
         // Opis programu
-        SetDlgItemText(IDC_ABOUT_DESCRIPTION, "SSH Key Manager\nVersion " VERSION_STRING "\nSSH key management application.");
+        SetDlgItemText(IDC_ABOUT_DESCRIPTION, "SSH Agent Replacement Utility\nVersion " VERSION_STRING "\nSSH key agent application.");
 
         // Tab control
         m_tab.InsertItem(0, "Release");
@@ -103,10 +103,10 @@ public:
                     "Compiler: {}\r\n"
                     "Architecture: {}\r\n",
                     VERSION_STRING,
-                    SKYM_BUILD_TYPE,
+                    SARU_BUILD_TYPE,
                     __DATE__ " " __TIME__,
-                    SKYM_COMPILER,
-                    SKYM_ARCHITECTURE
+                    SARU_COMPILER,
+                    SARU_ARCHITECTURE
                 );
                 m_edit.SetWindowText(buildInfo.c_str());
             }

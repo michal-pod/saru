@@ -1,5 +1,5 @@
 ﻿/*
- SKYM - SSH KeY Manager
+ SARU - SSH Agent Replacment Utility
  Copyright (C) 2025-2026 Michał Podsiadlik <michal@nglab.net>
 
  This program is free software: you can redistribute it and/or modify
@@ -27,7 +27,7 @@
 #include "servers/pipe-server.h"
 #include "servers/pageant-server.h"
 #include "ssh/process-info-extension.h"
-using namespace nglab::skym;
+using namespace nglab::saru;
 using namespace nglab::libssha;
 
 CAppModule _Module;
@@ -38,7 +38,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     if(FindWindow(_T("#32770"), _T("Loaded SSH keys list")) != NULL)
     {
-        MessageBox(NULL, _T("SKYM is already running."), _T("Information"), MB_OK | MB_ICONINFORMATION);
+        MessageBox(NULL, _T("SARU is already running."), _T("Information"), MB_OK | MB_ICONINFORMATION);
         return 0;
     }
 
@@ -51,11 +51,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
 
-    Logger log(Logger::instance(), "skym");
+    Logger log(Logger::instance(), "saru");
 
     // Read debug level from registry
     CRegKey key;
-    if (key.Open(HKEY_CURRENT_USER, _T(SKYM_KEY_ROOT), KEY_READ) == ERROR_SUCCESS)
+    if (key.Open(HKEY_CURRENT_USER, _T(SARU_KEY_ROOT), KEY_READ) == ERROR_SUCCESS)
     {
         DWORD val = 0;
         if (key.QueryDWORDValue(_T("DebugLevel"), val) == ERROR_SUCCESS)

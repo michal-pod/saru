@@ -1,5 +1,5 @@
 ﻿/*
- SKYM - SSH KeY Manager
+ SARU - SSH Agent Replacment Utility
  Copyright (C) 2025-2026 Michał Podsiadlik <michal@nglab.net>
 
  This program is free software: you can redistribute it and/or modify
@@ -127,13 +127,13 @@ int main()
 
     if (GetFileType(hStdout) != FILE_TYPE_PIPE || GetFileType(hStdin) != FILE_TYPE_PIPE)
     {
-        MessageBoxA(NULL, "This program is intended to be used in a piped context.", "SkyM NPP", MB_OK | MB_ICONERROR);
+        MessageBoxA(NULL, "This program is intended to be used in a piped context.", "SARU NPP", MB_OK | MB_ICONERROR);
         return 1;
     }
 
     if (!verify_client_process(hStdout))
     {
-        MessageBoxA(NULL, "Failed to verify client process.", "SkyM NPP", MB_OK | MB_ICONERROR);
+        MessageBoxA(NULL, "Failed to verify client process.", "SARU NPP", MB_OK | MB_ICONERROR);
         return 1;
     }
 
@@ -298,7 +298,7 @@ int main()
     CloseHandle(hInputThread);
     CloseHandle(hAgent);
 
-    fprintf(stderr, "SkyM NPP agent terminated, status: %d\n", bContinueLoop ? 0 : 1);
+    fprintf(stderr, "SARU NPP agent terminated, status: %d\n", bContinueLoop ? 0 : 1);
 
     return bContinueLoop ? 0 : 1;
 }

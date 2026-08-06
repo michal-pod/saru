@@ -2,8 +2,8 @@
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
   <assemblyIdentity
     version="1.0.0.0"
-    processorArchitecture="@SKYM_MANIFEST_ARCHITECTURE@"
-    name="SKYM"
+    processorArchitecture="@SARU_MANIFEST_ARCHITECTURE@"
+    name="SARU"
     type="win32"
   />
 
@@ -20,7 +20,7 @@
         type="win32"
         name="Microsoft.Windows.Common-Controls"
         version="6.0.0.0"
-        processorArchitecture="@SKYM_MANIFEST_ARCHITECTURE@"
+        processorArchitecture="@SARU_MANIFEST_ARCHITECTURE@"
         publicKeyToken="6595b64144ccf1df"
         language="*"
       />

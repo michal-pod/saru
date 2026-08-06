@@ -15,11 +15,13 @@ FILESUBTYPE     0x0
         BLOCK "040904E4"
         {
             VALUE "CompanyName", "nglab\0"
-            VALUE "FileDescription", "SSH KeY Manager\0"
+            VALUE "FileDescription", "SSH Agent Replacement Utility\0"
             VALUE "FileVersion", "@VERSION@\0"
-            VALUE "LegalCopyright", "Copyright (C) 20@VERSION_Y@ Michał Podsiadlik. All rights reserved.\0"
-            VALUE "ProductName", "SKYM\0"
+            VALUE "LegalCopyright", "Copyright (C) 20@VERSION_Y@ Michał Podsiadlik. License GPLv3+.\0"
+            VALUE "ProductName", "SARU\0"
             VALUE "ProductVersion", "@VERSION@\0"
+            VALUE "Comments", "This is free software licensed under GPLv3+. There is NO WARRANTY. See https://github.com/michal-pod/saru for more information.\0"
+
         }
     }
     BLOCK "VarFileInfo"

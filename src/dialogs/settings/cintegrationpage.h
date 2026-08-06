@@ -1,5 +1,5 @@
 ﻿/*
- SKYM - SSH KeY Manager
+ SARU - SSH Agent Replacment Utility
  Copyright (C) 2025-2026 Michał Podsiadlik <michal@nglab.net>
 
  This program is free software: you can redistribute it and/or modify
@@ -49,7 +49,7 @@ public:
         {
             ULONG cbChars;
             CheckDlgButton(IDC_AUTO_START,
-                           (key.QueryStringValue("SKYM", nullptr, &cbChars) == ERROR_SUCCESS) ? BST_CHECKED : BST_UNCHECKED);
+                           (key.QueryStringValue("SARU", nullptr, &cbChars) == ERROR_SUCCESS) ? BST_CHECKED : BST_UNCHECKED);
             key.Close();
         }
 
@@ -62,7 +62,7 @@ public:
         m_debugLevelCombo.AddString(_T("Verbose Debug"));
         m_debugLevelCombo.SetCurSel(static_cast<int>(Logger::instance().getLevel()));
 
-        if (key.Open(HKEY_CURRENT_USER, _T(SKYM_KEY_ROOT), KEY_READ) == ERROR_SUCCESS)
+        if (key.Open(HKEY_CURRENT_USER, _T(SARU_KEY_ROOT), KEY_READ) == ERROR_SUCCESS)
         {
             DWORD val = 0;
             if (key.QueryDWORDValue("PageantMode", val) == ERROR_SUCCESS)
@@ -133,11 +133,11 @@ public:
             {
                 TCHAR exePath[MAX_PATH];
                 GetModuleFileName(NULL, exePath, MAX_PATH);
-                key.SetStringValue("SKYM", exePath);
+                key.SetStringValue("SARU", exePath);
             }
             else
             {
-                key.DeleteValue("SKYM");
+                key.DeleteValue("SARU");
             }
             key.Close();
         }
@@ -147,7 +147,7 @@ public:
             return PSNRET_INVALID;
         }
 
-        if (key.Create(HKEY_CURRENT_USER, _T(SKYM_KEY_ROOT)) == ERROR_SUCCESS)
+        if (key.Create(HKEY_CURRENT_USER, _T(SARU_KEY_ROOT)) == ERROR_SUCCESS)
         {
             key.SetDWORDValue(_T("PageantMode"), m_PageantMode);
             key.SetDWORDValue(_T("NamedPipe"), m_NamedPipe);
