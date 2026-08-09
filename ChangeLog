@@ -1,3 +1,12 @@
-﻿Version 25.12.16:
+Version 26.08:
 
-  * First release.  
+  * Rename SKYM to SARU.
+  * Improve RSA SSH key compatibility.
+  * Strengthen key-use security, locking and client request handling.
+  * Improve key-management user interface updates.
+  * Sign all Windows binaries and the installer with a code-signing
+    certificate.
+
+Version 25.12.16:
+
+  * First release.

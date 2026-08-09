@@ -1,1 +1,26 @@
-﻿First release.
+SARU 26.08
+
+SARU 26.08 is the first release under the new name.  It succeeds SKYM and
+existing SKYM installations can be upgraded directly to SARU.
+
+What is new
+
+  * The application, its helpers, installer and documentation are now named
+    SARU - SSH Agent Replacement Utility.
+
+  * RSA keys work more reliably with SSH servers and clients that use current
+    RSA signing methods as well as older RSA-based setups.
+
+  * Key-use confirmation, locking and destination restrictions behave more
+    consistently.  In particular, locking the agent prevents a pending request
+    from using a key afterwards.
+
+  * Communication with supported SSH clients is more robust, including safer
+    handling of requests received through Pageant and the Windows SSH agent.
+
+  * Key lists and confirmation windows stay in sync with the current state of
+    the agent, making changes to loaded keys easier to follow.
+
+  * Every executable and the Windows installer are now signed with a trusted
+    code-signing certificate.  Detached GPG signatures for the MSI and ZIP
+    packages continue to be provided alongside the release files.
