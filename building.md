@@ -42,3 +42,17 @@ Cross compilation is more complex, you need to specify the correct conan profile
 ```bash
 conan build . --profile:build=default --profile:host=your_arm64_profile --build=missing
 ```
+
+## Creating a release package
+
+The MSI and ZIP packages are intentionally not built as part of the default
+build.  After configuring a build directory, create a signed release manually:
+
+```bash
+meson compile -C build package-release
+```
+
+The target requires `signtool`, `gpg` and `wix` to be available in `PATH`.
+Use `CODESIGN_SHA` or `CODESIGN_CN` to select the Authenticode certificate;
+`CODESIGN_ISSUER` optionally restricts the selection.  `GPG_SIGNING_KEY` is
+required to create and verify detached signatures for the MSI and ZIP files.

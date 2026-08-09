@@ -1,13 +1,59 @@
 {
-    "version" : "@VERSION@",
-    "architecture" : "@SARU_ARCHITECTURE@",
-    "files" : [
-        "@SARUExePath@",
-        "@SARUNPPExePath@",
-        "@SKYKDCCExePath@",
-        "@SARUHVHExePath@",
-        "@LICENSEFilePath@",
-        "@SARUDocFilePath@",
-        "@SARUGithubLink@"
+    "files": [
+        {
+            "type": "binary",
+            "group": "binaries",
+            "source": "@SARUExePath@",
+            "output_directory": "@SIGNED_BINARY_DIR@",
+            "name": "SARU.exe",
+            "archive": true
+        },
+        {
+            "type": "binary",
+            "group": "binaries",
+            "source": "@SARUNPPExePath@",
+            "output_directory": "@SIGNED_BINARY_DIR@",
+            "name": "saru-npp.exe",
+            "archive": true
+        },
+        {
+            "type": "binary",
+            "group": "binaries",
+            "source": "@SARUDCCExePath@",
+            "output_directory": "@SIGNED_BINARY_DIR@",
+            "name": "saru-dcc.exe",
+            "archive": true
+        },
+        {
+            "type": "binary",
+            "group": "binaries",
+            "source": "@SARUHVHExePath@",
+            "output_directory": "@SIGNED_BINARY_DIR@",
+            "name": "saru-hvh.exe",
+            "archive": true
+        },
+        {
+            "type": "file",
+            "source": "@LICENSEFilePath@",
+            "archive": true
+        },
+        {
+            "type": "file",
+            "source": "@SARUDocFilePath@",
+            "archive": true
+        },
+        {
+            "type": "file",
+            "source": "@SARUGithubLink@",
+            "archive": true
+        },
+        {
+            "type": "binary",
+            "group": "packages",
+            "source": "@UNSIGNED_MSI_PATH@",
+            "output_directory": "@RELEASE_DIRECTORY@",
+            "name": "@MSI_FILE_NAME@",
+            "archive": false
+        }
     ]
 }
