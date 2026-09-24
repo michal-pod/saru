@@ -25,6 +25,7 @@
 
 #include <libssha/key/key-manager.h>
 
+#include "config.h"
 #include "dialogs/ckeylist.h"
 #include "hyperv-session.h"
 #include "pipe-agent-session.h"

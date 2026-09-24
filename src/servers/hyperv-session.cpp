@@ -17,9 +17,11 @@
 */
 #include "hyperv-session.h"
 
+#include <atlbase.h>
 #include <stdexcept>
 #include <hvsocket.h>
 
+#include "config.h"
 #include "utils/string-converter.h"
 namespace nglab
 {

@@ -21,6 +21,7 @@
 #include <libssha/key/key-manager.h>
 #include <libssha/providers/botan/botan-lock-provider.h>
 
+#include "config.h"
 #include "debug-console.h"
 #include "stdatl.h"
 #include "dialogs/ckeylist.h"

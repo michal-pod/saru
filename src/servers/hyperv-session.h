@@ -18,6 +18,7 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <winsock2.h>
 #include <windows.h>
 
 #include <libssha/utils/secure_vector.h>
