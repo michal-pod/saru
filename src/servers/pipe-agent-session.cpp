@@ -274,7 +274,7 @@ namespace nglab
         OVERLAPPED *NamedPipeSession::ovRead() { return &m_ovRead; }
         OVERLAPPED *NamedPipeSession::ovWrite() { return &m_ovWrite; }
 
-        const std::string &NamedPipeSession::clientPath() const { return clientInfo.ClientPath; }
+        const std::filesystem::path &NamedPipeSession::clientPath() const { return clientInfo.ClientPath; }
         ULONG NamedPipeSession::clientPid() const { return clientInfo.ClientPid; }
         HANDLE NamedPipeSession::pipeHandle() const { return m_hPipe; }
 
@@ -284,9 +284,13 @@ namespace nglab
             DWORD dwDummy;
             if (GetOverlappedResult(m_hPipe, &m_ovConnect, &dwDummy, FALSE))
             {
-                log.debug("Client connected: PID={}, Path={}", clientInfo.ClientPid, clientInfo.ClientPath);
                 ResetEvent(m_hEventConnect);
                 getClientInfo();
+                log.debug(
+                    "Client connected: PID={}, ConnectingPath={}, ClientPath={}",
+                    clientInfo.ClientPid,
+                    clientInfo.ConnectingApplicationPath.string(),
+                    clientInfo.ClientPath.string());
                 initRead();
                 
                 return true;

@@ -25,6 +25,7 @@
 #include "debug-console.h"
 #include "stdatl.h"
 #include "dialogs/ckeylist.h"
+#include "dialogs/csettings.h"
 #include "servers/pipe-server.h"
 #include "servers/pageant-server.h"
 #include "ssh/process-info-extension.h"
@@ -51,6 +52,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     }
 
     CoInitializeEx(NULL, COINIT_APARTMENTTHREADED | COINIT_DISABLE_OLE1DDE);
+
+    CSettingsSheet::initDefault();
 
     Logger log(Logger::instance(), "saru");
 

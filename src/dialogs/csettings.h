@@ -16,7 +16,11 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #pragma once
+
+#include <stdexcept>
+
 #include "stdatl.h"
+#include "cskipexecutableslist.h"
 #include "system/hv.h"
 #include "settings/chypervpage.h"
 #include "settings/cintegrationpage.h"
@@ -30,6 +34,14 @@ namespace nglab
         class CSettingsSheet : public CPropertySheetImpl<CSettingsSheet>
         {
         public:
+            static void initDefault()
+            {
+                CIntegrationPage::initDefault();
+                CNotificationPage::initDefault();
+                CSkipExecutablesList::initDefault();
+                CHyperVPage::initDefault();
+            }
+
             CSettingsSheet(HWND hWnd) : CPropertySheetImpl<CSettingsSheet>(_T("Application Settings"), 0, hWnd)
             {
                 if (m_created)
@@ -58,9 +70,7 @@ namespace nglab
             CIntegrationPage m_pageIntegration;
             CNotificationPage m_pageNotification;
             CHyperVPage m_pageHyperV;
-            static bool m_created;
+            inline static bool m_created = false;
         };
-
-        bool CSettingsSheet::m_created = false;
     }
 }

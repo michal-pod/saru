@@ -33,6 +33,12 @@ CHyperVPage::CHyperVPage() : CPropertyPageImpl<CHyperVPage>(_T("Hyper-V")), LogE
 {
 }
 
+void CHyperVPage::initDefault()
+{
+    CRegKey key;
+    key.Create(HKEY_CURRENT_USER, SARU_KEY_ROOT "\\HyperVVMs");
+}
+
 LRESULT CHyperVPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL &)
 {
     m_list.Attach(GetDlgItem(IDC_HYPERV_LIST));

@@ -144,16 +144,17 @@ namespace nglab
                 wndIcon.Attach(this->GetDlgItem(IDC_APP_ICON));
                 if (m_clientInfo.SystemType == ClientInfoSystemType::Windows)
                 {
+                    const std::string clientPath = m_clientInfo.ClientPath.string();
                     SHFILEINFO sfi = {0};
-                    if (SHGetFileInfo(m_clientInfo.ClientPath.c_str(), 0, &sfi, sizeof(sfi), SHGFI_ICON))
+                    if (SHGetFileInfo(clientPath.c_str(), 0, &sfi, sizeof(sfi), SHGFI_ICON))
                     {
-                        log.debug("Loaded icon for requesting app '{}'", m_clientInfo.ClientPath);
+                        log.debug("Loaded icon for requesting app '{}'", clientPath);
                         wndIcon.SetIcon(sfi.hIcon);
                     }
                     else
                     {
                         log.warning("Failed to load icon for requesting app '{}', using default icon",
-                                    m_clientInfo.ClientPath);
+                                    clientPath);
                         HICON hDefault = LoadIcon(_Module.GetResourceInstance(), MAKEINTRESOURCE(IDI_ICON1));
                         wndIcon.SetIcon(hDefault);
                     }

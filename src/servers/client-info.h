@@ -16,6 +16,7 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #pragma once
+#include <filesystem>
 #include <string>
 #include <vector>
 #include <windows.h>
@@ -33,7 +34,8 @@ namespace nglab
 
         struct ClientInfo
         {
-            std::string ClientPath;
+            std::filesystem::path ConnectingApplicationPath;
+            std::filesystem::path ClientPath;
             ULONG ClientPid{0};
             std::string ClientInfo;
             std::vector<std::string> HopPaths;

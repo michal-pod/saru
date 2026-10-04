@@ -60,7 +60,11 @@ namespace nglab
                 m_async_operation = false;
                 if (findBinary())
                 {
-                    log.debug("PageantSession created for PID={}, Path={}", clientInfo.ClientPid, clientInfo.ClientPath);
+                    log.debug(
+                        "PageantSession created for PID={}, ConnectingPath={}, ClientPath={}",
+                        clientInfo.ClientPid,
+                        clientInfo.ConnectingApplicationPath.string(),
+                        clientInfo.ClientPath.string());
                 }
                 else
                 {

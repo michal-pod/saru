@@ -67,6 +67,8 @@ namespace nglab
 
             CHyperVPage();
 
+            static void initDefault();
+
             LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL &);
 
             LRESULT OnHelperExited(UINT, WPARAM wParam, LPARAM lParam, BOOL &);

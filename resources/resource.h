@@ -52,6 +52,11 @@
 #define IDC_ENABLE_DEBUG_CONSOLE            147
 #define IDC_DEBUG_LEVEL                     148
 #define IDC_FORCE_ON_TOP                    149
+#define IDC_SHOW_ORIGINATING_PROCESS        150
+#define IDC_EDIT_SKIP_EXECUTABLES            151
+#define IDC_SKIP_EXECUTABLES_LIST            152
+#define IDC_SKIP_EXECUTABLES_ADD             153
+#define IDC_SKIP_EXECUTABLES_REMOVE          154
 
 #define IDD_KEY_LIST                        100
 #define IDD_KEY_CONFIRM                     101
@@ -61,6 +66,7 @@
 #define IDD_SETTINGS_INTEGRATION            105
 #define IDD_SETTINGS_NOTIFICATION           106
 #define IDD_ADD_VM                          107
+#define IDD_SKIP_EXECUTABLES_LIST           108
 
 #define IDI_REQUESTING_APP                  100
 #define IDI_ICON1                           101
@@ -81,6 +87,7 @@
 #define IDI_APPLICATION_PUT                 116
 #define IDI_CLOCK                           117
 #define IDI_CLOCK_DELETE                    118
+#define IDI_ADD                             119
 
 #define IDR_TRAY_MENU                       100
 #define IDR_CHANGELOG                       101

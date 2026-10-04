@@ -41,6 +41,30 @@ public:
 
     CIntegrationPage() : CPropertyPageImpl<CIntegrationPage>(_T("Integration")), LogEnabler("CIntegrationPage") {}
 
+    static void initDefault()
+    {
+        CRegKey key;
+        if (key.Create(HKEY_CURRENT_USER, _T(SARU_KEY_ROOT)) != ERROR_SUCCESS)
+        {
+            return;
+        }
+
+        const auto setDefault = [&key](LPCTSTR name, DWORD defaultValue)
+        {
+            DWORD value;
+            if (key.QueryDWORDValue(name, value) == ERROR_FILE_NOT_FOUND)
+            {
+                key.SetDWORDValue(name, defaultValue);
+            }
+        };
+
+        setDefault(_T("PageantMode"), 1);
+        setDefault(_T("NamedPipe"), 1);
+        setDefault(_T("HyperVIntegration"), 0);
+        setDefault(_T("EnableDebugConsole"), 0);
+        setDefault(_T("DebugLevel"), static_cast<DWORD>(Logger::Level::Info));
+    }
+
     LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL &)
     {
         CRegKey key;

@@ -16,6 +16,7 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #pragma once
+#include <filesystem>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -83,7 +84,7 @@ namespace nglab
             virtual OVERLAPPED *ovConnect();
             virtual OVERLAPPED *ovRead();
             virtual OVERLAPPED *ovWrite();
-            const std::string &clientPath() const;
+            const std::filesystem::path &clientPath() const;
             ULONG clientPid() const;
             HANDLE pipeHandle() const;
             virtual bool onConnected();
@@ -100,7 +101,6 @@ namespace nglab
             OVERLAPPED m_ovConnect;
             OVERLAPPED m_ovRead;
             OVERLAPPED m_ovWrite;
-            std::string m_sClientPath;
             PSID m_sClientSid;
             std::vector<uint8_t> m_readBuffer;
             secure_vector<uint8_t> m_writeBuffer;

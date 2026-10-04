@@ -44,11 +44,17 @@ CKeySelectionDlg::CKeySelectionDlg(KeyListProvider keyListProvider, const Client
         sessionTypeStr = "via named pipe";
     }
 
-    std::string appExecutable = m_clientInfo.ClientPath.substr(m_clientInfo.ClientPath.find_last_of("\\/") + 1);
+    const std::string appExecutable = m_clientInfo.ClientPath.filename().string();
+    const std::string appConnectingExecutable = m_clientInfo.ConnectingApplicationPath.filename().string();
     if (sessionType == WindowsSessionType::HyperV)
     {
         m_label.Format("The application '%s' from virtual machine '%s' is requesting list of keys.",
                        appExecutable.c_str(), m_clientInfo.VMName.c_str());
+    }
+    else if (m_clientInfo.ClientPath != m_clientInfo.ConnectingApplicationPath)
+    {
+        m_label.Format("The application '%s' (using '%s') is requesting list of keys %s.",
+                       appExecutable.c_str(), appConnectingExecutable.c_str(), sessionTypeStr.c_str());
     }
     else
     {

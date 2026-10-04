@@ -17,12 +17,18 @@
 */
 #include "windows-session.h"
 
+#include <array>
 #include <chrono>
+#include <filesystem>
 #include <format>
+#include <optional>
 #include <unordered_map>
+#include <unordered_set>
+#include <vector>
 
 #include <windows.h>
 #include <atlbase.h>
+#include <tlhelp32.h>
 
 #include <libssha/key/key.h>
 #include <libssha/messages/extension.h>
@@ -51,6 +57,109 @@ namespace nglab::saru
         };
 
         std::unordered_map<std::string, ConfirmationEntry> confirmationMemory;
+
+        std::optional<std::filesystem::path> processImagePath(DWORD processId)
+        {
+            const HANDLE process = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, processId);
+            if (!process)
+            {
+                return std::nullopt;
+            }
+
+            std::array<char, 32768> path{};
+            DWORD pathSize = static_cast<DWORD>(path.size());
+            const BOOL queryResult = QueryFullProcessImageNameA(process, 0, path.data(), &pathSize);
+            CloseHandle(process);
+            if (!queryResult)
+            {
+                return std::nullopt;
+            }
+
+            return std::filesystem::path(std::string(path.data(), pathSize));
+        }
+
+        std::unordered_map<DWORD, DWORD> processParents()
+        {
+            std::unordered_map<DWORD, DWORD> parents;
+            const HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+            if (snapshot == INVALID_HANDLE_VALUE)
+            {
+                return parents;
+            }
+
+            PROCESSENTRY32 processEntry{};
+            processEntry.dwSize = sizeof(processEntry);
+            if (Process32First(snapshot, &processEntry))
+            {
+                do
+                {
+                    parents.emplace(processEntry.th32ProcessID, processEntry.th32ParentProcessID);
+                } while (Process32Next(snapshot, &processEntry));
+            }
+            CloseHandle(snapshot);
+            return parents;
+        }
+
+        std::vector<std::filesystem::path> originatingProcessSkipExecutables()
+        {
+            CRegKey key;
+            if (key.Open(HKEY_CURRENT_USER, SARU_KEY_ROOT, KEY_READ) != ERROR_SUCCESS)
+            {
+                return {};
+            }
+
+            ULONG valueLength = 0;
+            if (key.QueryMultiStringValue(
+                    "OriginatingProcessSkipExecutables",
+                    nullptr,
+                    &valueLength) != ERROR_SUCCESS ||
+                valueLength < 2)
+            {
+                return {};
+            }
+
+            std::vector<char> value(valueLength);
+            if (key.QueryMultiStringValue(
+                    "OriginatingProcessSkipExecutables",
+                    value.data(),
+                    &valueLength) != ERROR_SUCCESS)
+            {
+                return {};
+            }
+
+            std::vector<std::filesystem::path> executables;
+            for (const char *entry = value.data(); *entry != '\0'; entry += std::char_traits<char>::length(entry) + 1)
+            {
+                executables.emplace_back(entry);
+            }
+            return executables;
+        }
+
+        bool pathsEqual(const std::filesystem::path &left, const std::filesystem::path &right)
+        {
+            const auto normalizedLeft = left.lexically_normal().wstring();
+            const auto normalizedRight = right.lexically_normal().wstring();
+            return CompareStringOrdinal(
+                       normalizedLeft.c_str(),
+                       static_cast<int>(normalizedLeft.size()),
+                       normalizedRight.c_str(),
+                       static_cast<int>(normalizedRight.size()),
+                       TRUE) == CSTR_EQUAL;
+        }
+
+        bool shouldSkipProcess(
+            const std::filesystem::path &processPath,
+            const std::vector<std::filesystem::path> &skipExecutables)
+        {
+            for (const auto &skipExecutable : skipExecutables)
+            {
+                if (pathsEqual(processPath, skipExecutable))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
 
         void removeExpiredConfirmations()
         {
@@ -94,26 +203,60 @@ namespace nglab::saru
     template <typename T, WindowsSessionType SessionType>
     bool WindowsSession<T, SessionType>::findBinary()
     {
-        HANDLE hProcess = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, FALSE, clientInfo.ClientPid);
-        if (!hProcess)
+        const auto connectingApplicationPath = processImagePath(clientInfo.ClientPid);
+        if (!connectingApplicationPath)
         {
-            log.error("OpenProcess failed");
+            log.error("Failed to find image path for client PID={}", clientInfo.ClientPid);
             return false;
         }
 
-        char pathBuffer[MAX_PATH];
-        DWORD pathSize = sizeof(pathBuffer);
-        if (!QueryFullProcessImageNameA(hProcess, 0, pathBuffer, &pathSize))
+        clientInfo.ConnectingApplicationPath = *connectingApplicationPath;
+        clientInfo.ClientPath = *connectingApplicationPath;
+        log.debug(
+            "Connecting application PID={}, Path={}",
+            clientInfo.ClientPid,
+            clientInfo.ConnectingApplicationPath.string());
+
+        const auto skipExecutables = originatingProcessSkipExecutables();
+        if (!shouldSkipProcess(clientInfo.ClientPath, skipExecutables))
         {
-            log.error("QueryFullProcessImageName failed");
-            CloseHandle(hProcess);
-            return false;
+            return true;
         }
-        clientInfo.ClientPath = pathBuffer;
 
-        log.debug("Client PID={}, Path={}", clientInfo.ClientPid, clientInfo.ClientPath);
+        const auto parents = processParents();
+        std::unordered_set<DWORD> visitedProcessIds{clientInfo.ClientPid};
+        DWORD currentProcessId = clientInfo.ClientPid;
+        while (true)
+        {
+            const auto parent = parents.find(currentProcessId);
+            if (parent == parents.end() || parent->second == 0 || !visitedProcessIds.insert(parent->second).second)
+            {
+                break;
+            }
 
-        CloseHandle(hProcess);
+            currentProcessId = parent->second;
+            const auto currentProcessPath = processImagePath(currentProcessId);
+            if (!currentProcessPath)
+            {
+                log.debug("Failed to find image path for parent PID={}", currentProcessId);
+                break;
+            }
+
+            log.trace(
+                "Inspecting parent application PID={}, Path={}",
+                currentProcessId,
+                currentProcessPath->string());
+            if (!shouldSkipProcess(*currentProcessPath, skipExecutables))
+            {
+                clientInfo.ClientPath = *currentProcessPath;
+                log.debug(
+                    "Originating application PID={}, Path={}",
+                    currentProcessId,
+                    clientInfo.ClientPath.string());
+                break;
+            }
+        }
+
         return true;
     }
 
@@ -247,7 +390,7 @@ namespace nglab::saru
             return clientInfo.ClientInfo;
         }
 
-        const std::string fileName = clientInfo.ClientPath.substr(clientInfo.ClientPath.find_last_of("\\/") + 1);
+        const std::string fileName = clientInfo.ClientPath.filename().string();
         if (fileName.empty())
         {
             return "Unknown";
