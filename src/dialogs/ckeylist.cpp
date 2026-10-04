@@ -105,25 +105,23 @@ BOOL CKeyList::PreTranslateMessage(MSG *pMsg)
 LRESULT CKeyList::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled)
 {
     SetIcon(IconFactory::getLarge(IDI_ICON1));
-    m_keyList.Attach(GetDlgItem(IDC_KEY_LIST));
+    m_keyList.SubclassWindow(GetDlgItem(IDC_KEY_LIST));
     m_keyList.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
     m_keyList.ModifyStyle(0, LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS);
 
-    m_keyList.InsertColumn(0, "Key Type", LVCFMT_LEFT, 80);
-    m_keyList.InsertColumn(1, "Comment", LVCFMT_LEFT, 160);
-    m_keyList.InsertColumn(2, "Fingerprint", LVCFMT_LEFT, 360);
+    m_keyList.InsertColumn(0, "Key Type", LVCFMT_LEFT, 0);
+    m_keyList.InsertColumn(1, "Comment", LVCFMT_LEFT, 0);
+    m_keyList.InsertColumn(2, "Fingerprint", LVCFMT_LEFT, 0);
+    m_keyList.setColumnLayout({80, 160, 0});
 
 
-    m_keyConstraints.Attach(GetDlgItem(IDC_KEY_CONSTRAINS));
+    m_keyConstraints.SubclassWindow(GetDlgItem(IDC_KEY_CONSTRAINS));
     m_keyConstraints.ModifyStyle(0, LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS);
     m_keyConstraints.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
-    m_keyConstraints.InsertColumn(0, "From", LVCFMT_LEFT, 150);
-    m_keyConstraints.InsertColumn(1, "To", LVCFMT_LEFT, 150);
+    m_keyConstraints.InsertColumn(0, "From", LVCFMT_LEFT, 0);
+    m_keyConstraints.InsertColumn(1, "To", LVCFMT_LEFT, 0);
+    m_keyConstraints.setColumnLayout({0, 0});
     m_keyConstraints.EnableWindow(FALSE);
-
-    // Adjust column widths based on current control size
-    BOOL bHandledDummy;
-    OnDpiChanged(0, 0, 0, bHandledDummy);
 
     m_confirmCheck.Attach(GetDlgItem(IDC_REQUIRE_CONFIRMATION));
     m_confirmCheck.EnableWindow(FALSE);
@@ -316,27 +314,6 @@ LRESULT CKeyList::OnCrossUIMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
     }
 
     delete msg;
-    return 0;
-}
-
-// This is only leftover from trying to make this app DPI-aware; it wasn't worth the effort.
-LRESULT CKeyList::OnDpiChanged(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled)
-{
-    RECT rcList;
-
-    m_keyList.GetClientRect(&rcList);
-    int width = rcList.right - rcList.left;
-    m_keyList.SetColumnWidth(0, width * 15 / 100);
-    m_keyList.SetColumnWidth(1, width * 20 / 100);
-    m_keyList.SetColumnWidth(2, width * 65 / 100);
-
-    m_keyConstraints.GetClientRect(&rcList);
-    width = rcList.right - rcList.left;
-    m_keyConstraints.SetColumnWidth(0, width / 2);
-    m_keyConstraints.SetColumnWidth(1, width / 2);
-
-    bHandled = TRUE;
-
     return 0;
 }
 

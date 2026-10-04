@@ -169,11 +169,10 @@ namespace nglab::saru
 
     LRESULT CSkipExecutablesList::OnInitDialog(UINT, WPARAM, LPARAM, BOOL &)
     {
-        m_list.Attach(GetDlgItem(IDC_SKIP_EXECUTABLES_LIST));
+        m_list.SubclassWindow(GetDlgItem(IDC_SKIP_EXECUTABLES_LIST));
         m_list.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
-        CRect listClientRect;
-        m_list.GetClientRect(&listClientRect);
-        m_list.InsertColumn(0, _T("Executable path"), LVCFMT_LEFT, listClientRect.Width());
+        m_list.InsertColumn(0, _T("Executable path"), LVCFMT_LEFT, 0);
+        m_list.setColumnLayout({0});
 
         m_addButton.Attach(GetDlgItem(IDC_SKIP_EXECUTABLES_ADD));
         m_addButton.SetIcon(IconFactory::get(IDI_ADD));

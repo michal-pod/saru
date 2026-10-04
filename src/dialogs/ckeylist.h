@@ -22,6 +22,7 @@
 #include <libssha/key/key-manager-observer.h>
 
 #include "stdatl.h"
+#include "cdpilistview.h"
 #include "resources/resource.h"
 #include "debug-console.h"
 #include "factories/icon-factory.h"
@@ -60,7 +61,6 @@ namespace nglab
                 MESSAGE_HANDLER(WM_TIMER, OnTimer)
                 MESSAGE_HANDLER(WM_CROSS_UI_MESSAGE, OnCrossUIMessage)
                 MESSAGE_HANDLER(WM_PAINT, OnPaint)
-                MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
                 COMMAND_ID_HANDLER(IDCLOSE, OnClose)
                 COMMAND_ID_HANDLER(IDCANCEL, OnClose)
                 COMMAND_ID_HANDLER(IDM_EXIT, OnExit)
@@ -90,7 +90,6 @@ namespace nglab
             LRESULT OnKeyDown(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled);
             LRESULT OnTrayNotification(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam);
             LRESULT OnCrossUIMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled);
-            LRESULT OnDpiChanged(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled);
             LRESULT OnPaint(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled);
             void HandleTrayCommand(UINT cmd);
             LRESULT OnClose(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled);
@@ -127,8 +126,8 @@ namespace nglab
             void keysCleared();
             nglab::libssha::KeyBasePtr getSelectedKey();
             CKeyList();
-            CListViewCtrl m_keyList;
-            CListViewCtrl m_keyConstraints;
+            CDpiListView m_keyList;
+            CDpiListView m_keyConstraints;
             CButton m_confirmCheck;
             CButton m_constrainsLoad;
             CButton m_constrainsClear;

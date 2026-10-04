@@ -24,6 +24,7 @@
 
 #include "resources/resource.h"
 #include "stdatl.h"
+#include "cdpilistview.h"
 
 namespace nglab::saru
 {
@@ -64,7 +65,7 @@ namespace nglab::saru
         void updateRemoveButton();
         bool contains(const std::filesystem::path &path) const;
 
-        CListViewCtrl m_list;
+        CDpiListView m_list;
         CButton m_addButton;
         CButton m_removeButton;
         CButton m_cancelButton;

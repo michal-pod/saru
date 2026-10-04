@@ -22,6 +22,7 @@
 #include <libssha/utils/logger.h>
 
 #include "stdatl.h"
+#include "dialogs/cdpilistview.h"
 #include "resources/resource.h"
 #include "system/uac-helper.h"
 
@@ -41,7 +42,7 @@ namespace nglab
                 WM_HELPER_EXITED = WM_APP + 0x100
             };
 
-            CListViewCtrl m_list;
+            CDpiListView m_list;
             // compact item representation for each list row
             struct Item
             {

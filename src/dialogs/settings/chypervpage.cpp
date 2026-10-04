@@ -41,9 +41,10 @@ void CHyperVPage::initDefault()
 
 LRESULT CHyperVPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL &)
 {
-    m_list.Attach(GetDlgItem(IDC_HYPERV_LIST));
-    m_list.InsertColumn(0, _T("Virtual Machine"), LVCFMT_LEFT, 260);
-    m_list.InsertColumn(1, _T("Allowed"), LVCFMT_CENTER, 80);
+    m_list.SubclassWindow(GetDlgItem(IDC_HYPERV_LIST));
+    m_list.InsertColumn(0, _T("Virtual Machine"), LVCFMT_LEFT, 0);
+    m_list.InsertColumn(1, _T("Allowed"), LVCFMT_CENTER, 0);
+    m_list.setColumnLayout({0, 80});
     m_list.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT);
 
     bool canElevate = UACHelper::canElevate();

@@ -25,6 +25,7 @@
 #include <libssha/utils/logger.h>
 
 #include "stdatl.h"
+#include "cdpilistview.h"
 #include "resources/resource.h"
 #include "dialogs/cuserinputdialog.h"
 #include "servers/client-info.h"
@@ -59,7 +60,6 @@ namespace nglab
             BEGIN_MSG_MAP(CKeySelectionDlg)
             MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
             MESSAGE_HANDLER(WM_TIMER, OnTimer)
-            MESSAGE_HANDLER(WM_DPICHANGED, OnDpiChanged)
             MESSAGE_HANDLER(WM_REFRESH_KEYS, OnRefreshKeys)
             NOTIFY_HANDLER(IDC_KEY_LIST, NM_DBLCLK, OnListDblClick)
             COMMAND_ID_HANDLER(IDOK, OnOk)
@@ -75,7 +75,6 @@ namespace nglab
             LRESULT OnListDblClick(int /*idCtrl*/, LPNMHDR pnmh, BOOL &bHandled);
             LRESULT OnOk(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled);
             LRESULT OnCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled);
-            LRESULT OnDpiChanged(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled);
             LRESULT OnRefreshKeys(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled);
 
             virtual void onKeyAdded(KeyBasePtr key) override;
@@ -91,7 +90,7 @@ namespace nglab
         private:
             void refreshKeys();
 
-            CListViewCtrl m_keyList;
+            CDpiListView m_keyList;
             ATL::CString m_label;
             KeyListProvider m_keyListProvider;
             PubKeyItemList m_keys;

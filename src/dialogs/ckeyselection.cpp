@@ -84,32 +84,19 @@ LRESULT CKeySelectionDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, 
     wndLabel.Attach(this->GetDlgItem(IDC_HEADER_LINE));
     wndLabel.SetWindowText(m_label);
 
-    m_keyList.Attach(GetDlgItem(IDC_KEY_LIST));
+    m_keyList.SubclassWindow(GetDlgItem(IDC_KEY_LIST));
     m_keyList.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
     m_keyList.ModifyStyle(0, LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS);
 
-    m_keyList.InsertColumn(0, "Key Type", LVCFMT_LEFT, 80);
-    m_keyList.InsertColumn(1, "Comment", LVCFMT_LEFT, 160);
-    m_keyList.InsertColumn(2, "Fingerprint", LVCFMT_LEFT, 360);
+    m_keyList.InsertColumn(0, "Key Type", LVCFMT_LEFT, 0);
+    m_keyList.InsertColumn(1, "Comment", LVCFMT_LEFT, 0);
+    m_keyList.InsertColumn(2, "Fingerprint", LVCFMT_LEFT, 0);
+    m_keyList.setColumnLayout({80, 160, 0});
 
     refreshKeys();
 
     // Returning FALSE because we explicitly set focus to a control
     return FALSE;
-}
-
-LRESULT CKeySelectionDlg::OnDpiChanged(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled)
-{
-    RECT rcList;
-    m_keyList.GetClientRect(&rcList);
-    int width = rcList.right - rcList.left;
-    m_keyList.SetColumnWidth(0, width * 15 / 100);
-    m_keyList.SetColumnWidth(1, width * 20 / 100);
-    m_keyList.SetColumnWidth(2, width * 65 / 100);
-
-    bHandled = TRUE;
-
-    return 0;
 }
 
 LRESULT CKeySelectionDlg::OnRefreshKeys(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled)
