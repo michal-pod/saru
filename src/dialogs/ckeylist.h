@@ -23,6 +23,7 @@
 
 #include "stdatl.h"
 #include "cdpilistview.h"
+#include "cdpiresourceicons.h"
 #include "resources/resource.h"
 #include "debug-console.h"
 #include "factories/icon-factory.h"
@@ -35,7 +36,7 @@ namespace nglab
         using nglab::libssha::LogEnabler;
         using nglab::libssha::Logger;
 
-        class CKeyList : public CDialogImpl<CKeyList>,
+        class CKeyList : public CDialogImpl<CKeyList>, public CDpiResourceIcons<CKeyList>,
                          public CMessageFilter,
                          public KeyManagerObserver,
                          public LogEnabler
@@ -60,7 +61,6 @@ namespace nglab
                 MESSAGE_HANDLER(WM_DESTROY, OnDestroyDialog)
                 MESSAGE_HANDLER(WM_TIMER, OnTimer)
                 MESSAGE_HANDLER(WM_CROSS_UI_MESSAGE, OnCrossUIMessage)
-                MESSAGE_HANDLER(WM_PAINT, OnPaint)
                 COMMAND_ID_HANDLER(IDCLOSE, OnClose)
                 COMMAND_ID_HANDLER(IDCANCEL, OnClose)
                 COMMAND_ID_HANDLER(IDM_EXIT, OnExit)
@@ -71,6 +71,7 @@ namespace nglab
                 COMMAND_ID_HANDLER(IDC_REQUIRE_CONFIRMATION, OnConfirmChanged)
                 MESSAGE_HANDLER_EX(WM_TRAYNOTIFY, OnTrayNotification)
                 NOTIFY_HANDLER(IDC_KEY_LIST, LVN_ITEMCHANGED, OnKeySelectionChanged)
+                CHAIN_MSG_MAP(CDpiResourceIcons<CKeyList>)
             END_MSG_MAP()
 
             static CKeyList& instance()
@@ -90,7 +91,6 @@ namespace nglab
             LRESULT OnKeyDown(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled);
             LRESULT OnTrayNotification(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam);
             LRESULT OnCrossUIMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled);
-            LRESULT OnPaint(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled);
             void HandleTrayCommand(UINT cmd);
             LRESULT OnClose(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled);
             LRESULT OnDialogClose(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled);
@@ -133,7 +133,6 @@ namespace nglab
             CButton m_constrainsClear;
             CButton m_copyPubId;
             CStatic m_keyTimeoutText;
-            CStatic m_keyTimeoutIcon;
             CMenu m_trayMenu;
 
             std::set<std::string> m_userLoadedConstraints;

@@ -26,7 +26,6 @@
 #include <shobjidl.h>
 
 #include "config.h"
-#include "factories/icon-factory.h"
 
 namespace nglab::saru
 {
@@ -175,13 +174,15 @@ namespace nglab::saru
         m_list.setColumnLayout({0});
 
         m_addButton.Attach(GetDlgItem(IDC_SKIP_EXECUTABLES_ADD));
-        m_addButton.SetIcon(IconFactory::get(IDI_ADD));
         m_removeButton.Attach(GetDlgItem(IDC_SKIP_EXECUTABLES_REMOVE));
-        m_removeButton.SetIcon(IconFactory::get(IDI_BIN));
         m_cancelButton.Attach(GetDlgItem(IDCANCEL));
-        m_cancelButton.SetIcon(IconFactory::get(IDI_CROSS));
         m_saveButton.Attach(GetDlgItem(IDOK));
-        m_saveButton.SetIcon(IconFactory::get(IDI_ACCEPT));
+        initResourceIcons({
+            {IDC_SKIP_EXECUTABLES_ADD, IDI_ADD, 16},
+            {IDC_SKIP_EXECUTABLES_REMOVE, IDI_BIN, 16},
+            {IDCANCEL, IDI_CROSS, 16},
+            {IDOK, IDI_ACCEPT, 16},
+        });
 
         loadExecutables();
         refreshList();

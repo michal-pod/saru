@@ -64,6 +64,7 @@ namespace nglab
             NOTIFY_HANDLER(IDC_KEY_LIST, NM_DBLCLK, OnListDblClick)
             COMMAND_ID_HANDLER(IDOK, OnOk)
             COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
+            CHAIN_MSG_MAP(CDpiResourceIcons<CKeySelectionDlg>)
             END_MSG_MAP()
 
             CKeySelectionDlg(KeyListProvider keyListProvider, const ClientInfo &clientInfo, WindowsSessionType sessionType);

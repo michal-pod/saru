@@ -25,7 +25,6 @@
 
 #include "servers/windows-session.h"
 #include "dialogs/ckeylist.h"
-#include "factories/icon-factory.h"
 
 using namespace nglab::saru;
 
@@ -155,102 +154,16 @@ LRESULT CKeyConfirm::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL 
         }
     }
 
+    initResourceIcons({
+        {IDC_ICON_KEY, IDI_PAGE_WHITE_TEXT, 16},
+        {IDC_ICON_FINGERPRINT, IDI_KEY, 16},
+    });
+    if (m_extraLine1Icon)
+        initResourceIcons({{IDC_EXTRA_LINE1_ICON, m_extraLine1Icon, 16}});
+
     SendMessage(DM_SETDEFID, IDNO, 0);
 
     return TRUE;
-}
-
-LRESULT CKeyConfirm::OnPaint(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled)
-{
-    PAINTSTRUCT ps;
-    HDC hdc = BeginPaint(&ps);
-
-    // Draw the key info icon
-    HICON hIcon = IconFactory::get(IDI_PAGE_WHITE_TEXT);
-    if (hIcon)
-    {
-        CWindow wnd = GetDlgItem(IDC_ICON_KEY);
-        RECT rc;
-        wnd.GetWindowRect(&rc);
-        ScreenToClient(&rc);
-        DrawIconEx(
-            hdc,
-            rc.left, rc.top,
-            hIcon,
-            16, 16,
-            0,
-            NULL,
-            DI_NORMAL);
-    }
-
-    // Draw the fingerprint icon
-    hIcon = IconFactory::get(IDI_KEY);
-    if (hIcon)
-    {
-        CWindow wnd = GetDlgItem(IDC_ICON_FINGERPRINT);
-        RECT rc;
-        wnd.GetWindowRect(&rc);
-        ScreenToClient(&rc);
-        DrawIconEx(
-            hdc,
-            rc.left, rc.top,
-            hIcon,
-            16, 16,
-            0,
-            NULL,
-            DI_NORMAL);
-    }
-
-    // Draw the hostname icon
-    if (m_extraLine1Icon)
-    {
-        hIcon = IconFactory::get(IDI_SERVER);
-        if (hIcon)
-        {
-            CWindow wnd = GetDlgItem(IDC_EXTRA_LINE1_ICON);
-            if (wnd.IsWindowVisible())
-            {
-                RECT rc;
-                wnd.GetWindowRect(&rc);
-                ScreenToClient(&rc);
-                DrawIconEx(
-                    hdc,
-                    rc.left, rc.top,
-                    hIcon,
-                    16, 16,
-                    0,
-                    NULL,
-                    DI_NORMAL);
-            }
-        }
-    }
-
-    // Draw the username icon
-    if (m_extraLine2Icon)
-    {
-        hIcon = IconFactory::get(IDI_USER);
-        if (hIcon)
-        {
-            CWindow wnd = GetDlgItem(IDC_EXTRA_LINE2_ICON);
-            if (wnd.IsWindowVisible())
-            {
-                RECT rc;
-                wnd.GetWindowRect(&rc);
-                ScreenToClient(&rc);
-                DrawIconEx(
-                    hdc,
-                    rc.left, rc.top,
-                    hIcon,
-                    16, 16,
-                    0,
-                    NULL,
-                    DI_NORMAL);
-            }
-        }
-    }
-
-    EndPaint(&ps);
-    return 0;
 }
 
 LRESULT CKeyConfirm::OnRememberCheck(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled)

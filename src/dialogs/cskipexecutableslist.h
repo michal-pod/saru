@@ -25,10 +25,11 @@
 #include "resources/resource.h"
 #include "stdatl.h"
 #include "cdpilistview.h"
+#include "cdpiresourceicons.h"
 
 namespace nglab::saru
 {
-    class CSkipExecutablesList : public CDialogImpl<CSkipExecutablesList>, public nglab::libssha::LogEnabler
+    class CSkipExecutablesList : public CDialogImpl<CSkipExecutablesList>, public CDpiResourceIcons<CSkipExecutablesList>, public nglab::libssha::LogEnabler
     {
     public:
         enum
@@ -43,6 +44,7 @@ namespace nglab::saru
         COMMAND_ID_HANDLER(IDC_SKIP_EXECUTABLES_REMOVE, OnRemove)
         COMMAND_ID_HANDLER(IDOK, OnSave)
         COMMAND_ID_HANDLER(IDCANCEL, OnCancel)
+        CHAIN_MSG_MAP(CDpiResourceIcons<CSkipExecutablesList>)
         END_MSG_MAP()
 
         CSkipExecutablesList();

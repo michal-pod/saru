@@ -79,13 +79,42 @@ skum_rc_manifest_rc = configure_file(
   configuration: config_data
 )
 saru_rc_objects = windows.compile_resources(
-  [
-    'resources/resources.rc', 
-    'resources/dialogs.rc',
-    saru_rc_version,
-    skum_rc_manifest_rc
-  ],
-  depend_files: ['RELEASE', 'ChangeLog', 'LICENSE', saru_rc_manifest.full_path()],  
+  'resources/resources.rc',
+  depend_files: files(
+    'resources/resource.h',
+    'RELEASE', 'ChangeLog', 'LICENSE',
+    'resources/app.ico',
+    'resources/accept.ico',
+    'resources/bug.ico',
+    'resources/cancel.ico',
+    'resources/door_out.ico',
+    'resources/key.ico',
+    'resources/page_white_text.ico',
+    'resources/server.ico',
+    'resources/user.ico',
+    'resources/wrench.ico',
+    'resources/information.ico',
+    'resources/linux.ico',
+    'resources/cross.ico',
+    'resources/page_copy.ico',
+    'resources/bin.ico',
+    'resources/application_put.ico',
+    'resources/clock.ico',
+    'resources/clock_delete.ico',
+    'resources/add.ico',
+  ),
+)
+saru_rc_objects += windows.compile_resources(
+  'resources/dialogs.rc',
+  depend_files: files('resources/resource.h'),
+)
+saru_rc_objects += windows.compile_resources(
+  saru_rc_version,
+  depend_files: version_h,
+)
+saru_rc_objects += windows.compile_resources(
+  skum_rc_manifest_rc,
+  depend_files: saru_rc_manifest,
 )
 
 saru_include = include_directories('src')

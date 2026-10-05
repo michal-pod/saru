@@ -23,6 +23,7 @@
 #include "resources/resource.h"
 #include "servers/client-info.h"
 #include "factories/icon-factory.h"
+#include "cdpiresourceicons.h"
 
 namespace nglab
 {
@@ -34,7 +35,7 @@ namespace nglab
         enum WindowsSessionType : uint8_t;
 
         template <typename T>
-        class CUserInputDialog : public CDialogImpl<T>, virtual public LogEnabler
+        class CUserInputDialog : public CDialogImpl<T>, public CDpiResourceIcons<T>, virtual public LogEnabler
         {
         public:
             enum
@@ -49,12 +50,11 @@ namespace nglab
 
             void initTimeout()
             {
-                CButton btnAccept;
-                btnAccept.Attach(this->GetDlgItem(T::PrimaryButtonId));
-                btnAccept.SetIcon(IconFactory::get(IDI_ACCEPT));
-
                 m_cancelButton.Attach(this->GetDlgItem(T::CancelButtonId));
-                m_cancelButton.SetIcon(IconFactory::get(IDI_CANCEL));
+                this->initResourceIcons({
+                    {T::PrimaryButtonId, IDI_ACCEPT, 16},
+                    {T::CancelButtonId, IDI_CANCEL, 16},
+                });
 
                 CRegKey key;
                 if (key.Open(HKEY_CURRENT_USER, _T(SARU_KEY_ROOT)) == ERROR_SUCCESS)

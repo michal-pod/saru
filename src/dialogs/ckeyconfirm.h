@@ -57,7 +57,6 @@ namespace nglab
 
             BEGIN_MSG_MAP(CKeyConfirm)
             MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
-            MESSAGE_HANDLER(WM_PAINT, OnPaint)
             MESSAGE_HANDLER(WM_TIMER, OnTimer)
             COMMAND_ID_HANDLER(IDYES, OnAllow)
             COMMAND_ID_HANDLER(IDNO, OnDeny)
@@ -65,6 +64,7 @@ namespace nglab
             COMMAND_ID_HANDLER(IDCLOSE, OnCancel)
             COMMAND_ID_HANDLER(IDC_REMEMBER_CHECK, OnRememberCheck)
 
+            CHAIN_MSG_MAP(CDpiResourceIcons<CKeyConfirm>)
             END_MSG_MAP()
 
             BEGIN_DDX_MAP(CKeyConfirm)
@@ -82,7 +82,6 @@ namespace nglab
             virtual BOOL PreTranslateMessage(MSG *pMsg);
 
             LRESULT OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled);
-            LRESULT OnPaint(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled);
             LRESULT OnRememberCheck(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled);
             LRESULT OnAllow(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled);
             LRESULT OnDeny(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled);
@@ -113,7 +112,6 @@ namespace nglab
             int m_rememberKey = 0;
             int m_rememberTime = 0;
             int m_extraLine1Icon = 0;
-            int m_extraLine2Icon = 0;
             int m_timer = 0;
         };
     } // namespace saru

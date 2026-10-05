@@ -1,0 +1,9 @@
+FamFamFam Silk SVG icons by Simon (Simandara), based on Silk by Mark James.
+Source: https://github.com/Simandara/famfamfam-silk-svg
+Revision: 5dc7601fd918aaed7ae12b11b2f2ddb48acfdf60
+License: Creative Commons Attribution 4.0 International (CC BY 4.0)
+https://creativecommons.org/licenses/by/4.0/
+Changes: SVG artwork rasterized into multi-resolution ICO files for SARU.
+linux.ico is generated from Tux.svg; other names follow resources/resources.rc.
+Sizes in pixels (16px icons): 16 20 24 28 32 36 40 48 56 64
+Sizes in pixels (linux.ico, 16px and 32px): 16 20 24 28 32 36 40 48 56 64 72 80 96 112 128

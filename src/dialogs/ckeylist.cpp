@@ -131,21 +131,20 @@ LRESULT CKeyList::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bH
 
     m_constrainsLoad.Attach(GetDlgItem(IDC_DEST_CONS_LOAD));
     m_constrainsLoad.EnableWindow(FALSE);
-    m_constrainsLoad.SetIcon(IconFactory::get(IDI_APPLICATION_PUT));
 
     m_constrainsClear.Attach(GetDlgItem(IDC_DEST_CONS_CLEAR));
     m_constrainsClear.EnableWindow(FALSE);
-    m_constrainsClear.SetIcon(IconFactory::get(IDI_BIN));
 
     m_copyPubId.Attach(GetDlgItem(IDC_COPY_PUB_ID));
     m_copyPubId.EnableWindow(FALSE);
-    m_copyPubId.SetIcon(IconFactory::get(IDI_PAGE_COPY));
 
-    m_keyTimeoutIcon.Attach(GetDlgItem(IDC_KEY_TIMEOUT_ICON));
-
-    CButton btnClose;
-    btnClose.Attach(GetDlgItem(IDCANCEL));
-    btnClose.SetIcon(IconFactory::get(IDI_CROSS));
+    initResourceIcons({
+        {IDC_DEST_CONS_LOAD, IDI_APPLICATION_PUT, 16},
+        {IDC_DEST_CONS_CLEAR, IDI_BIN, 16},
+        {IDC_COPY_PUB_ID, IDI_PAGE_COPY, 16},
+        {IDCANCEL, IDI_CROSS, 16},
+        {IDC_KEY_TIMEOUT_ICON, IDI_CLOCK, 16},
+    });
 
     // Tray icon is initialized in the header's inline OnInitDialog; avoid duplicate registration here.
     NOTIFYICONDATA nid = {};
@@ -875,29 +874,4 @@ void CKeyList::showOrHideWindow()
         ShowWindow(SW_SHOW);
         SetForegroundWindow(m_hWnd);
     }
-}
-
-LRESULT CKeyList::OnPaint(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled)
-{
-    PAINTSTRUCT ps;
-    HDC hdc = BeginPaint(&ps);
-
-    HICON hIcon = IconFactory::get(IDI_CLOCK);
-    if (hIcon)
-    {
-        RECT rc;
-        m_keyTimeoutIcon.GetWindowRect(&rc);
-        ScreenToClient(&rc);
-        DrawIconEx(
-            hdc,
-            rc.left, rc.top,
-            hIcon,
-            16, 16,
-            0,
-            NULL,
-            DI_NORMAL);
-    }
-
-    EndPaint(&ps);
-    return 0;
 }
