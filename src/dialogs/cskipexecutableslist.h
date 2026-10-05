@@ -39,6 +39,10 @@ namespace nglab::saru
 
         BEGIN_MSG_MAP(CSkipExecutablesList)
         MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+        MESSAGE_HANDLER(WM_DPICHANGED, OnIconDpiChanged)
+        MESSAGE_HANDLER(WM_DPICHANGED_AFTERPARENT, OnIconDpiChanged)
+        MESSAGE_HANDLER(WM_REFRESH_EXECUTABLE_ICONS, OnRefreshExecutableIcons)
+        MESSAGE_HANDLER(WM_DESTROY, OnDestroy)
         NOTIFY_HANDLER(IDC_SKIP_EXECUTABLES_LIST, LVN_ITEMCHANGED, OnSelectionChanged)
         COMMAND_ID_HANDLER(IDC_SKIP_EXECUTABLES_ADD, OnAdd)
         COMMAND_ID_HANDLER(IDC_SKIP_EXECUTABLES_REMOVE, OnRemove)
@@ -64,6 +68,11 @@ namespace nglab::saru
         void loadExecutables();
         bool saveExecutables();
         void refreshList();
+        void refreshExecutableIcons();
+        LRESULT OnIconDpiChanged(UINT, WPARAM, LPARAM, BOOL &);
+        LRESULT OnRefreshExecutableIcons(UINT, WPARAM, LPARAM, BOOL &);
+        LRESULT OnDestroy(UINT, WPARAM, LPARAM, BOOL &);
+        enum { WM_REFRESH_EXECUTABLE_ICONS = WM_APP + 0x105 };
         void updateRemoveButton();
         bool contains(const std::filesystem::path &path) const;
 
@@ -72,7 +81,8 @@ namespace nglab::saru
         CButton m_removeButton;
         CButton m_cancelButton;
         CButton m_saveButton;
-        HIMAGELIST m_systemImageList{nullptr};
+        CImageListManaged m_executableIcons;
+        int m_iconSize = 0;
         std::vector<std::filesystem::path> m_executables;
     };
 }

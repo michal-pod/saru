@@ -22,6 +22,9 @@
 #include "stdatl.h"
 #include "resources/resource.h"
 
+namespace nglab::saru
+{
+
 using nglab::libssha::LogEnabler;
 
 class CNotificationPage : public CPropertyPageImpl<CNotificationPage>, public LogEnabler
@@ -63,4 +66,6 @@ private:
     bool m_ForceOnTop = true;
     bool m_ShowOriginatingProcess = true;
 };
+
+}
 

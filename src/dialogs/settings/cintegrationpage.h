@@ -20,6 +20,9 @@
 
 #include "stdatl.h"
 #include "config.h"
+namespace nglab::saru
+{
+
 using nglab::libssha::LogEnabler;
 using nglab::libssha::Logger;
 
@@ -211,4 +214,6 @@ private:
     bool m_HyperVIntegration = false;
     bool m_EnableDebugConsole = false;
 };
+
+}
 

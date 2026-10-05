@@ -17,13 +17,13 @@
 */
 #pragma once
 #include <shellscalingapi.h>
-#include <shlobj.h>
 
 #include "stdatl.h"
 #include "config.h"
 #include "resources/resource.h"
 #include "servers/client-info.h"
 #include "cdpiresourceicons.h"
+#include "cexecutableicon.h"
 
 namespace nglab
 {
@@ -159,27 +159,7 @@ namespace nglab
                     CIcon replacement;
                     if (m_clientInfo.SystemType == ClientInfoSystemType::Windows)
                     {
-                        HICON extracted = nullptr;
-                        const HRESULT result = SHDefExtractIconW(
-                            m_clientInfo.ClientPath.c_str(), 0, 0, &extracted, nullptr, MAKELONG(size, 0));
-                        replacement.Attach(extracted);
-                        if (result != S_OK || replacement.IsNull())
-                            log.warning("Failed to load icon for requesting app '{}', using default icon",
-                                        m_clientInfo.ClientPath.string());
-
-                        if (replacement.IsNull())
-                        {
-                            // Use Explorer's default EXE icon, extracted at the target size.
-                            SHSTOCKICONINFO info{};
-                            info.cbSize = sizeof(info);
-                            if (SUCCEEDED(SHGetStockIconInfo(SIID_APPLICATION, SHGSI_ICONLOCATION, &info)))
-                            {
-                                HICON defaultIcon = nullptr;
-                                SHDefExtractIconW(info.szPath, info.iIcon, 0,
-                                                  &defaultIcon, nullptr, MAKELONG(size, 0));
-                                replacement.Attach(defaultIcon);
-                            }
-                        }
+                        replacement.Attach(loadExecutableIcon(m_clientInfo.ClientPath, size));
                     }
 
                     if (replacement.IsNull())

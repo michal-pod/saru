@@ -20,7 +20,12 @@
 
 #include "stdatl.h"
 #include "config.h"
-class CAboutDlg : public CDialogImpl<CAboutDlg>
+#include "cdpiresourceicons.h"
+
+namespace nglab::saru
+{
+
+class CAboutDlg : public CDialogImpl<CAboutDlg>, public CDpiResourceIcons<CAboutDlg>
 {
 public:
     enum
@@ -36,6 +41,7 @@ public:
     MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
     NOTIFY_HANDLER(IDC_ABOUT_TAB, TCN_SELCHANGE, OnTabSelChange)
     COMMAND_ID_HANDLER(IDOK, OnCloseCmd)
+    CHAIN_MSG_MAP(CDpiResourceIcons<CAboutDlg>)
     END_MSG_MAP()
 
     CAboutDlg() {
@@ -52,6 +58,7 @@ public:
 
     LRESULT OnInitDialog(UINT, WPARAM, LPARAM, BOOL &)
     {
+        initResourceIcons({{IDC_APP_ICON, IDI_ICON1, 32}});
         // Ustaw ikonę
          HICON hIcon = AtlLoadIconImage(IDI_ICON1, LR_DEFAULTCOLOR, 32, 32);
          SetIcon(hIcon, TRUE);
@@ -137,4 +144,6 @@ public:
 };
 
 bool CAboutDlg::m_created = false;
+
+}
 

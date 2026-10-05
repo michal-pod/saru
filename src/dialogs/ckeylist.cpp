@@ -105,7 +105,7 @@ BOOL CKeyList::PreTranslateMessage(MSG *pMsg)
 
 LRESULT CKeyList::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled)
 {
-    SetIcon(IconFactory::getLarge(IDI_ICON1));
+    refreshWindowIcons();
     m_keyList.SubclassWindow(GetDlgItem(IDC_KEY_LIST));
     m_keyList.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
     m_keyList.ModifyStyle(0, LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS);
@@ -147,23 +147,96 @@ LRESULT CKeyList::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bH
         {IDC_KEY_TIMEOUT_ICON, IDI_CLOCK, 16},
     });
 
-    // Tray icon is initialized in the header's inline OnInitDialog; avoid duplicate registration here.
+    refreshTrayIcon(true);
+    // Once registered, its actual location determines the tray's monitor.
+    PostMessage(WM_REFRESH_SHELL_ICONS);
+
+    return TRUE;
+}
+
+void CKeyList::refreshWindowIcons()
+{
+    const UINT dpi = GetDpiForWindow(m_hWnd);
+    if (dpi == m_windowIconDpi)
+        return;
+    CIcon smallIcon(static_cast<HICON>(LoadImage(
+        _Module.GetResourceInstance(), MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON,
+        GetSystemMetricsForDpi(SM_CXSMICON, dpi), GetSystemMetricsForDpi(SM_CYSMICON, dpi), 0)));
+    CIcon largeIcon(static_cast<HICON>(LoadImage(
+        _Module.GetResourceInstance(), MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON,
+        GetSystemMetricsForDpi(SM_CXICON, dpi), GetSystemMetricsForDpi(SM_CYICON, dpi), 0)));
+    if (smallIcon.IsNull() || largeIcon.IsNull())
+        return;
+    SetIcon(smallIcon, FALSE);
+    SetIcon(largeIcon, TRUE);
+    m_smallWindowIcon.Attach(smallIcon.Detach());
+    m_largeWindowIcon.Attach(largeIcon.Detach());
+    m_windowIconDpi = dpi;
+}
+
+void CKeyList::refreshTrayIcon(bool add)
+{
+    NOTIFYICONIDENTIFIER identifier{};
+    identifier.cbSize = sizeof(identifier);
+    identifier.guidItem = SARU_TRAY_ICON_GUID;
+    RECT location{};
+    HMONITOR monitor = nullptr;
+    if (SUCCEEDED(Shell_NotifyIconGetRect(&identifier, &location)))
+        monitor = MonitorFromRect(&location, MONITOR_DEFAULTTOPRIMARY);
+    else
+        monitor = MonitorFromWindow(FindWindow(_T("Shell_TrayWnd"), nullptr), MONITOR_DEFAULTTOPRIMARY);
+    UINT dpi = USER_DEFAULT_SCREEN_DPI, dpiY = USER_DEFAULT_SCREEN_DPI;
+    GetDpiForMonitor(monitor, MDT_EFFECTIVE_DPI, &dpi, &dpiY);
+    const int size = GetSystemMetricsForDpi(SM_CXSMICON, dpi);
+    if (!add && size == m_trayIconSize)
+        return;
+
+    CIcon replacement(static_cast<HICON>(LoadImage(
+        _Module.GetResourceInstance(), MAKEINTRESOURCE(IDI_ICON1),
+        IMAGE_ICON, size, size, LR_DEFAULTCOLOR)));
+    if (replacement.IsNull())
+        return;
+
     NOTIFYICONDATA nid = {};
     nid.cbSize = sizeof(NOTIFYICONDATA);
     nid.hWnd = m_hWnd;
     nid.uID = 1;
-    nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
+    nid.uFlags = NIF_GUID | NIF_ICON;
+    if (add)
+        nid.uFlags |= NIF_MESSAGE | NIF_TIP;
     nid.uCallbackMessage = WM_TRAYNOTIFY;
-    nid.hIcon = LoadIcon(_Module.GetResourceInstance(), MAKEINTRESOURCE(IDI_ICON1));
+    nid.hIcon = replacement;
     nid.guidItem = SARU_TRAY_ICON_GUID;
-    nid.uVersion = NOTIFYICON_VERSION_4;
     // Copy tooltip text with strncpy and explicit null-termination
     strncpy(nid.szTip, _T("SSH Key Agent"), sizeof(nid.szTip) - 1);
     nid.szTip[sizeof(nid.szTip) - 1] = '\0';
 
-    Shell_NotifyIcon(NIM_ADD, &nid);
+    if (Shell_NotifyIcon(add ? NIM_ADD : NIM_MODIFY, &nid))
+    {
+        m_trayIcon.Attach(replacement.Detach());
+        m_trayIconSize = size;
+    }
+}
 
-    return TRUE;
+LRESULT CKeyList::OnIconEnvironmentChanged(UINT, WPARAM, LPARAM, BOOL &handled)
+{
+    PostMessage(WM_REFRESH_SHELL_ICONS);
+    handled = FALSE;
+    return 0;
+}
+
+LRESULT CKeyList::OnRefreshShellIcons(UINT, WPARAM, LPARAM, BOOL &)
+{
+    refreshWindowIcons();
+    refreshTrayIcon();
+    return 0;
+}
+
+LRESULT CKeyList::OnTaskbarCreated(UINT, WPARAM, LPARAM, BOOL &)
+{
+    refreshTrayIcon(true);
+    PostMessage(WM_REFRESH_SHELL_ICONS);
+    return 0;
 }
 
 LRESULT CKeyList::OnDestroyDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled)
@@ -173,8 +246,16 @@ LRESULT CKeyList::OnDestroyDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL 
     nid.hWnd = m_hWnd;
     nid.uID = 1;
     nid.guidItem = SARU_TRAY_ICON_GUID;
+    nid.uFlags = NIF_GUID;
 
     Shell_NotifyIcon(NIM_DELETE, &nid);
+    SetIcon(nullptr, FALSE);
+    SetIcon(nullptr, TRUE);
+    m_trayIcon.DestroyIcon();
+    m_smallWindowIcon.DestroyIcon();
+    m_largeWindowIcon.DestroyIcon();
+    m_trayIconSize = 0;
+    m_windowIconDpi = 0;
 
     return 0;
 }
@@ -316,7 +397,8 @@ LRESULT CKeyList::OnCrossUIMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
         nid.cbSize = sizeof(NOTIFYICONDATA);
         nid.hWnd = m_hWnd;
         nid.uID = 1;
-        nid.uFlags = NIF_INFO;
+        nid.uFlags = NIF_INFO | NIF_GUID;
+        nid.guidItem = SARU_TRAY_ICON_GUID;
         // Copy with strncpy and ensure null-termination for portability (avoid _s functions)
         strncpy(nid.szInfoTitle, msg->title.c_str(), sizeof(nid.szInfoTitle) - 1);
         nid.szInfoTitle[sizeof(nid.szInfoTitle) - 1] = '\0';

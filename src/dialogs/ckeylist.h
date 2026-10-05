@@ -26,7 +26,6 @@
 #include "cdpiresourceicons.h"
 #include "resources/resource.h"
 #include "debug-console.h"
-#include "factories/icon-factory.h"
 namespace nglab
 {
     namespace saru
@@ -59,6 +58,11 @@ namespace nglab
                 MESSAGE_HANDLER(WM_CLOSE, OnDialogClose)
                 MESSAGE_HANDLER(WM_DESTROY, OnDestroyDialog)
                 MESSAGE_HANDLER(WM_TIMER, OnTimer)
+                MESSAGE_HANDLER(WM_DPICHANGED, OnIconEnvironmentChanged)
+                MESSAGE_HANDLER(WM_DISPLAYCHANGE, OnIconEnvironmentChanged)
+                MESSAGE_HANDLER(WM_SETTINGCHANGE, OnIconEnvironmentChanged)
+                MESSAGE_HANDLER(WM_REFRESH_SHELL_ICONS, OnRefreshShellIcons)
+                MESSAGE_HANDLER(m_taskbarCreatedMessage, OnTaskbarCreated)
                 MESSAGE_HANDLER(WM_CROSS_UI_MESSAGE, OnCrossUIMessage)
                 COMMAND_ID_HANDLER(IDCLOSE, OnClose)
                 COMMAND_ID_HANDLER(IDCANCEL, OnClose)
@@ -122,6 +126,18 @@ namespace nglab
             void showOrHideWindow();
             UINT showTrayMenu(POINT position);
             static HBITMAP createTrayMenuBitmap(int resourceId, int size);
+            void refreshTrayIcon(bool add = false);
+            void refreshWindowIcons();
+            LRESULT OnIconEnvironmentChanged(UINT, WPARAM, LPARAM, BOOL &);
+            LRESULT OnRefreshShellIcons(UINT, WPARAM, LPARAM, BOOL &);
+            LRESULT OnTaskbarCreated(UINT, WPARAM, LPARAM, BOOL &);
+            enum { WM_REFRESH_SHELL_ICONS = WM_APP + 0x106 };
+            inline static const UINT m_taskbarCreatedMessage = RegisterWindowMessage(_T("TaskbarCreated"));
+            CIcon m_trayIcon;
+            CIcon m_smallWindowIcon;
+            CIcon m_largeWindowIcon;
+            int m_trayIconSize = 0;
+            UINT m_windowIconDpi = 0;
             void keyAdded(const nglab::libssha::KeyBasePtr key);
             void keyRemoved(const nglab::libssha::KeyBasePtr key);
             void keysCleared();

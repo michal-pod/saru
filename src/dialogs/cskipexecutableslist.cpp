@@ -26,6 +26,7 @@
 #include <shobjidl.h>
 
 #include "config.h"
+#include "cexecutableicon.h"
 
 namespace nglab::saru
 {
@@ -169,6 +170,7 @@ namespace nglab::saru
     LRESULT CSkipExecutablesList::OnInitDialog(UINT, WPARAM, LPARAM, BOOL &)
     {
         m_list.SubclassWindow(GetDlgItem(IDC_SKIP_EXECUTABLES_LIST));
+        m_list.ModifyStyle(0, LVS_SHAREIMAGELISTS);
         m_list.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_DOUBLEBUFFER);
         m_list.InsertColumn(0, _T("Executable path"), LVCFMT_LEFT, 0);
         m_list.setColumnLayout({0});
@@ -371,29 +373,60 @@ namespace nglab::saru
         for (size_t index = 0; index < m_executables.size(); ++index)
         {
             const auto path = m_executables[index].string();
-            SHFILEINFOA fileInfo{};
-            UINT flags = SHGFI_SYSICONINDEX | SHGFI_LARGEICON;
-            DWORD attributes = 0;
-            std::error_code error;
-            if (!std::filesystem::is_regular_file(m_executables[index], error))
-            {
-                flags |= SHGFI_USEFILEATTRIBUTES;
-                attributes = FILE_ATTRIBUTE_NORMAL;
-            }
-
-            const auto imageList = reinterpret_cast<HIMAGELIST>(
-                SHGetFileInfoA(path.c_str(), attributes, &fileInfo, sizeof(fileInfo), flags));
-            if (!m_systemImageList && imageList)
-            {
-                m_systemImageList = imageList;
-                m_list.SetImageList(m_systemImageList, LVSIL_SMALL);
-            }
-
             m_list.InsertItem(
                 static_cast<int>(index),
                 path.c_str(),
-                imageList ? fileInfo.iIcon : 0);
+                I_IMAGENONE);
         }
+        refreshExecutableIcons();
+    }
+
+    void CSkipExecutablesList::refreshExecutableIcons()
+    {
+        const int size = MulDiv(32, GetDpiForWindow(m_hWnd), USER_DEFAULT_SCREEN_DPI);
+        CImageListManaged replacement;
+        if (!replacement.Create(size, size, ILC_COLOR32 | ILC_MASK,
+                                static_cast<int>(m_executables.size()), 1))
+            return;
+
+        for (size_t index = 0; index < m_executables.size(); ++index)
+        {
+            CIcon icon(loadExecutableIcon(m_executables[index], size));
+            const int image = icon.IsNull() ? I_IMAGENONE : replacement.AddIcon(icon);
+            LVITEM item{};
+            item.mask = LVIF_IMAGE;
+            item.iItem = static_cast<int>(index);
+            item.iImage = image < 0 ? I_IMAGENONE : image;
+            m_list.SetItem(&item);
+        }
+        m_list.SetImageList(replacement, LVSIL_SMALL);
+        m_executableIcons.Attach(replacement.Detach());
+        m_iconSize = size;
+        m_list.Invalidate();
+    }
+
+    LRESULT CSkipExecutablesList::OnIconDpiChanged(UINT, WPARAM, LPARAM, BOOL &handled)
+    {
+        PostMessage(WM_REFRESH_EXECUTABLE_ICONS);
+        handled = FALSE;
+        return 0;
+    }
+
+    LRESULT CSkipExecutablesList::OnRefreshExecutableIcons(UINT, WPARAM, LPARAM, BOOL &)
+    {
+        if (m_iconSize != MulDiv(32, GetDpiForWindow(m_hWnd), USER_DEFAULT_SCREEN_DPI))
+            refreshExecutableIcons();
+        return 0;
+    }
+
+    LRESULT CSkipExecutablesList::OnDestroy(UINT, WPARAM, LPARAM, BOOL &handled)
+    {
+        m_list.SetImageList(nullptr, LVSIL_SMALL);
+        if (!m_executableIcons.IsNull())
+            m_executableIcons.Destroy();
+        m_iconSize = 0;
+        handled = FALSE;
+        return 0;
     }
 
     void CSkipExecutablesList::updateRemoveButton()

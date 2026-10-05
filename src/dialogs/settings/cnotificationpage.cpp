@@ -20,6 +20,9 @@
 #include "config.h"
 #include "dialogs/cskipexecutableslist.h"
 
+namespace nglab::saru
+{
+
 CNotificationPage::CNotificationPage()
     : CPropertyPageImpl<CNotificationPage>(_T("Notifications")), LogEnabler("CNotificationPage")
 {
@@ -197,7 +200,9 @@ LRESULT CNotificationPage::OnSomethingChanged(WORD, WORD controlId, HWND, BOOL &
 
 LRESULT CNotificationPage::OnEditSkipExecutables(WORD, WORD, HWND, BOOL &)
 {
-    nglab::saru::CSkipExecutablesList dialog;
+    CSkipExecutablesList dialog;
     dialog.DoModal(m_hWnd);
     return 0;
+}
+
 }
