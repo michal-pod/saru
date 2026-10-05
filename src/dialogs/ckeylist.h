@@ -27,7 +27,6 @@
 #include "resources/resource.h"
 #include "debug-console.h"
 #include "factories/icon-factory.h"
-#include "factories/bitmap-factory.h"
 namespace nglab
 {
     namespace saru
@@ -121,6 +120,8 @@ namespace nglab
             void updateKeyDetails(bool timerTriggered = false);
             bool shouldNotifyKeyOperations();
             void showOrHideWindow();
+            UINT showTrayMenu(POINT position);
+            static HBITMAP createTrayMenuBitmap(int resourceId, int size);
             void keyAdded(const nglab::libssha::KeyBasePtr key);
             void keyRemoved(const nglab::libssha::KeyBasePtr key);
             void keysCleared();
@@ -133,7 +134,6 @@ namespace nglab
             CButton m_constrainsClear;
             CButton m_copyPubId;
             CStatic m_keyTimeoutText;
-            CMenu m_trayMenu;
 
             std::set<std::string> m_userLoadedConstraints;
         };

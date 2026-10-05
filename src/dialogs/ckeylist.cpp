@@ -19,13 +19,14 @@
 
 #include <cstring>
 #include <string>
+#include <array>
+#include <shellscalingapi.h>
 
 #include <libssha/agent/session.h>
 
 #include "external/base64.hpp"
 
 #include "stdatl.h"
-#include "../factories/bitmap-factory.h"
 #include "cabout.h"
 #include "csettings.h"
 #include "servers/windows-session.h"
@@ -162,33 +163,6 @@ LRESULT CKeyList::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bH
 
     Shell_NotifyIcon(NIM_ADD, &nid);
 
-    m_trayMenu.CreatePopupMenu();
-    m_trayMenu.AppendMenu(MF_STRING, IDM_SHOW, "Show");
-    m_trayMenu.SetMenuItemBitmaps(IDM_SHOW, MF_BYCOMMAND,
-                                  BitmapFactory::get(IDI_KEY),
-                                  nullptr);
-    if (DebugConsole::instance().isEnabled())
-    {
-        m_trayMenu.AppendMenu(MF_STRING, IDM_SHOW_DEBUG_CONSOLE, "Show debug console");
-        m_trayMenu.SetMenuItemBitmaps(IDM_SHOW_DEBUG_CONSOLE, MF_BYCOMMAND,
-                                      BitmapFactory::get(IDI_BUG),
-                                      nullptr);
-    }
-    m_trayMenu.AppendMenu(MF_SEPARATOR);
-    m_trayMenu.AppendMenu(MF_STRING, IDM_SHOW_SETTINGS, "Settings");
-    m_trayMenu.SetMenuItemBitmaps(IDM_SHOW_SETTINGS, MF_BYCOMMAND,
-                                  BitmapFactory::get(IDI_WRENCH),
-                                  nullptr);
-    m_trayMenu.AppendMenu(MF_STRING, IDM_ABOUT, "About");
-    m_trayMenu.SetMenuItemBitmaps(IDM_ABOUT, MF_BYCOMMAND,
-                                  BitmapFactory::get(IDI_INFO),
-                                  nullptr);
-    m_trayMenu.AppendMenu(MF_SEPARATOR);
-    m_trayMenu.AppendMenu(MF_STRING, IDM_EXIT, "Exit");
-    m_trayMenu.SetMenuItemBitmaps(IDM_EXIT, MF_BYCOMMAND,
-                                  BitmapFactory::get(IDI_DOOR_OUT),
-                                  nullptr);
-
     return TRUE;
 }
 
@@ -236,10 +210,7 @@ LRESULT CKeyList::OnTrayNotification(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam
         GetCursorPos(&pt);
         SetForegroundWindow(m_hWnd);
 
-        UINT cmd = m_trayMenu.TrackPopupMenu(
-            TPM_RIGHTBUTTON | TPM_RETURNCMD,
-            pt.x, pt.y,
-            m_hWnd);
+        UINT cmd = showTrayMenu(pt);
 
         if (cmd != 0)
         {
@@ -251,6 +222,81 @@ LRESULT CKeyList::OnTrayNotification(UINT /*uMsg*/, WPARAM wParam, LPARAM lParam
     }
 
     return 0;
+}
+
+HBITMAP CKeyList::createTrayMenuBitmap(int resourceId, int size)
+{
+    CIcon icon(static_cast<HICON>(LoadImage(
+        _Module.GetResourceInstance(), MAKEINTRESOURCE(resourceId),
+        IMAGE_ICON, size, size, LR_DEFAULTCOLOR)));
+    if (icon.IsNull())
+        return nullptr;
+
+    CDC dc;
+    if (!dc.CreateCompatibleDC())
+        return nullptr;
+
+    BITMAPINFO info{};
+    info.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+    info.bmiHeader.biWidth = size;
+    info.bmiHeader.biHeight = -size;
+    info.bmiHeader.biPlanes = 1;
+    info.bmiHeader.biBitCount = 32;
+    info.bmiHeader.biCompression = BI_RGB;
+
+    CBitmap bitmap;
+    void *pixels = nullptr;
+    if (!bitmap.CreateDIBSection(dc, &info, DIB_RGB_COLORS, &pixels, nullptr, 0))
+        return nullptr;
+
+    // Draw into transparent BGRA pixels so the menu can blend the icon's edges.
+    std::memset(pixels, 0, static_cast<size_t>(size) * size * 4);
+    HBITMAP previous = dc.SelectBitmap(bitmap);
+    const BOOL drawn = DrawIconEx(dc, 0, 0, icon, size, size, 0, nullptr, DI_NORMAL);
+    dc.SelectBitmap(previous);
+    return drawn ? bitmap.Detach() : nullptr;
+}
+
+UINT CKeyList::showTrayMenu(POINT position)
+{
+    UINT dpi = GetDpiForWindow(m_hWnd);
+    UINT dpiY = dpi;
+    GetDpiForMonitor(MonitorFromPoint(position, MONITOR_DEFAULTTONEAREST),
+                     MDT_EFFECTIVE_DPI, &dpi, &dpiY);
+    const int size = MulDiv(16, dpi, USER_DEFAULT_SCREEN_DPI);
+
+    // Destroy the menu before releasing the bitmaps it references.
+    std::array<CBitmap, 5> bitmaps;
+    CMenu menu;
+    if (!menu.CreatePopupMenu())
+        return 0;
+
+    size_t index = 0;
+    const auto appendItem = [&](UINT command, LPCTSTR text, int resourceId)
+    {
+        menu.AppendMenu(MF_STRING, command, text);
+        bitmaps[index].Attach(createTrayMenuBitmap(resourceId, size));
+        MENUITEMINFO item{sizeof(item)};
+        item.fMask = MIIM_BITMAP;
+        item.hbmpItem = bitmaps[index++];
+        menu.SetMenuItemInfo(command, FALSE, &item);
+    };
+
+    appendItem(IDM_SHOW, IsWindowVisible() ? _T("Hide") : _T("Show"), IDI_KEY);
+    auto &console = DebugConsole::instance();
+    if (console.isEnabled())
+        appendItem(IDM_SHOW_DEBUG_CONSOLE,
+                   console.isVisible() ? _T("Hide debug console") : _T("Show debug console"), IDI_BUG);
+    menu.AppendMenu(MF_SEPARATOR);
+    appendItem(IDM_SHOW_SETTINGS, _T("Settings"), IDI_WRENCH);
+    appendItem(IDM_ABOUT, _T("About"), IDI_INFO);
+    menu.AppendMenu(MF_SEPARATOR);
+    appendItem(IDM_EXIT, _T("Exit"), IDI_DOOR_OUT);
+
+    const UINT command = menu.TrackPopupMenu(
+        TPM_RIGHTBUTTON | TPM_RETURNCMD | TPM_NONOTIFY, position.x, position.y, m_hWnd);
+    PostMessage(WM_NULL);
+    return command;
 }
 
 LRESULT CKeyList::OnCrossUIMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled)
@@ -341,11 +387,9 @@ LRESULT CKeyList::OnShowDebugConsole(WORD wNotifyCode, WORD wID, HWND hWndCtl, B
     if (console.isVisible())
     {
         console.hide();
-        m_trayMenu.ModifyMenu(IDM_SHOW_DEBUG_CONSOLE, MF_BYCOMMAND | MF_STRING, IDM_SHOW_DEBUG_CONSOLE, "Show debug console");
     }
     else
     {
-        m_trayMenu.ModifyMenu(IDM_SHOW_DEBUG_CONSOLE, MF_BYCOMMAND | MF_STRING, IDM_SHOW_DEBUG_CONSOLE, "Hide debug console");
         console.show();
     }
     return 0;
@@ -864,13 +908,11 @@ void CKeyList::showOrHideWindow()
 {
     if (IsWindowVisible())
     {
-        m_trayMenu.ModifyMenu(IDM_SHOW, MF_BYCOMMAND | MF_STRING, IDM_SHOW, "Show");
         ShowWindow(SW_HIDE);
     }
     else
     {
 
-        m_trayMenu.ModifyMenu(IDM_SHOW, MF_BYCOMMAND | MF_STRING, IDM_SHOW, "Hide");
         ShowWindow(SW_SHOW);
         SetForegroundWindow(m_hWnd);
     }
