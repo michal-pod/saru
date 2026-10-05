@@ -54,7 +54,7 @@ LRESULT CHyperVPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL &)
     m_deleteButton.EnableWindow(FALSE);
 
 
-    CWindow scanButton = GetDlgItem(IDC_HV_RESCAN);
+    CButton scanButton(GetDlgItem(IDC_HV_RESCAN));
     CWindow addButton = GetDlgItem(IDC_HV_ADD);
     addButton.ShowWindow(SW_HIDE);
 
@@ -66,16 +66,7 @@ LRESULT CHyperVPage::OnInitDialog(UINT, WPARAM, LPARAM, BOOL &)
         addButton.ShowWindow(SW_SHOW);
     }
 
-    if (canElevate && !isElevated)
-    {
-        SHSTOCKICONINFO sii = {};
-        sii.cbSize = sizeof(SHSTOCKICONINFO);
-        if (SUCCEEDED(SHGetStockIconInfo(SIID_SHIELD, SHGSI_ICON | SHGSI_SMALLICON, &sii)))
-        {
-            HICON hShieldIcon = sii.hIcon;
-            scanButton.SendMessage(BM_SETIMAGE, IMAGE_ICON, (LPARAM)hShieldIcon);
-        }
-    }
+    scanButton.SetElevationRequiredState(canElevate && !isElevated);
 
     reloadList();
 
