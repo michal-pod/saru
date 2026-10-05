@@ -64,7 +64,7 @@ namespace nglab
             COMMAND_ID_HANDLER(IDCLOSE, OnCancel)
             COMMAND_ID_HANDLER(IDC_REMEMBER_CHECK, OnRememberCheck)
 
-            CHAIN_MSG_MAP(CDpiResourceIcons<CKeyConfirm>)
+            CHAIN_MSG_MAP(CUserInputDialog<CKeyConfirm>)
             END_MSG_MAP()
 
             BEGIN_DDX_MAP(CKeyConfirm)

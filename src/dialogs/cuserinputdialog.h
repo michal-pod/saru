@@ -17,12 +17,12 @@
 */
 #pragma once
 #include <shellscalingapi.h>
+#include <shlobj.h>
 
 #include "stdatl.h"
 #include "config.h"
 #include "resources/resource.h"
 #include "servers/client-info.h"
-#include "factories/icon-factory.h"
 #include "cdpiresourceicons.h"
 
 namespace nglab
@@ -44,9 +44,18 @@ namespace nglab
 
             };
 
-            CUserInputDialog(const ClientInfo &clientInfo) : m_clientInfo(clientInfo)
+            CUserInputDialog(const ClientInfo &clientInfo)
+                : LogEnabler("CUserInputDialog"), m_clientInfo(clientInfo)
             {
             }
+
+            BEGIN_MSG_MAP(CUserInputDialog)
+            MESSAGE_HANDLER(WM_DPICHANGED, OnAppIconDpiChanged)
+            MESSAGE_HANDLER(WM_DPICHANGED_AFTERPARENT, OnAppIconDpiChanged)
+            MESSAGE_HANDLER(WM_REFRESH_APP_ICON, OnRefreshAppIcon)
+            MESSAGE_HANDLER(WM_NCDESTROY, OnAppIconWindowDestroyed)
+            CHAIN_MSG_MAP(CDpiResourceIcons<T>)
+            END_MSG_MAP()
 
             void initTimeout()
             {
@@ -140,30 +149,62 @@ namespace nglab
 
             void loadAppIcon()
             {
-                CStatic wndIcon;
-                wndIcon.Attach(this->GetDlgItem(IDC_APP_ICON));
-                if (m_clientInfo.SystemType == ClientInfoSystemType::Windows)
+                CStatic wndIcon(this->GetDlgItem(IDC_APP_ICON));
+                if (!wndIcon.IsWindow())
+                    return;
+
+                const int size = MulDiv(32, GetDpiForWindow(this->m_hWnd), USER_DEFAULT_SCREEN_DPI);
+                if (size != m_appIconSize)
                 {
-                    const std::string clientPath = m_clientInfo.ClientPath.string();
-                    SHFILEINFO sfi = {0};
-                    if (SHGetFileInfo(clientPath.c_str(), 0, &sfi, sizeof(sfi), SHGFI_ICON))
+                    CIcon replacement;
+                    if (m_clientInfo.SystemType == ClientInfoSystemType::Windows)
                     {
-                        log.debug("Loaded icon for requesting app '{}'", clientPath);
-                        wndIcon.SetIcon(sfi.hIcon);
+                        HICON extracted = nullptr;
+                        const HRESULT result = SHDefExtractIconW(
+                            m_clientInfo.ClientPath.c_str(), 0, 0, &extracted, nullptr, MAKELONG(size, 0));
+                        replacement.Attach(extracted);
+                        if (result != S_OK || replacement.IsNull())
+                            log.warning("Failed to load icon for requesting app '{}', using default icon",
+                                        m_clientInfo.ClientPath.string());
+
+                        if (replacement.IsNull())
+                        {
+                            // Use Explorer's default EXE icon, extracted at the target size.
+                            SHSTOCKICONINFO info{};
+                            info.cbSize = sizeof(info);
+                            if (SUCCEEDED(SHGetStockIconInfo(SIID_APPLICATION, SHGSI_ICONLOCATION, &info)))
+                            {
+                                HICON defaultIcon = nullptr;
+                                SHDefExtractIconW(info.szPath, info.iIcon, 0,
+                                                  &defaultIcon, nullptr, MAKELONG(size, 0));
+                                replacement.Attach(defaultIcon);
+                            }
+                        }
                     }
-                    else
+
+                    if (replacement.IsNull())
                     {
-                        log.warning("Failed to load icon for requesting app '{}', using default icon",
-                                    clientPath);
-                        HICON hDefault = LoadIcon(_Module.GetResourceInstance(), MAKEINTRESOURCE(IDI_ICON1));
-                        wndIcon.SetIcon(hDefault);
+                        const int resourceId = m_clientInfo.SystemType == ClientInfoSystemType::Linux
+                            ? IDI_LINUX : IDI_ICON1;
+                        replacement.Attach(static_cast<HICON>(LoadImage(
+                            _Module.GetResourceInstance(), MAKEINTRESOURCE(resourceId),
+                            IMAGE_ICON, size, size, LR_DEFAULTCOLOR)));
                     }
+                    if (replacement.IsNull())
+                        return;
+
+                    wndIcon.SetIcon(replacement);
+                    m_appIcon.Attach(replacement.Detach());
+                    m_appIconSize = size;
                 }
-                else if (m_clientInfo.SystemType == ClientInfoSystemType::Linux)
-                {
-                    HICON hLinuxIcon = IconFactory::getLarge(IDI_LINUX);
-                    wndIcon.SetIcon(hLinuxIcon);
-                }
+
+                // PMv2 may restore the zero dimensions from the dialog template.
+                wndIcon.ModifyStyle(SS_TYPEMASK | SS_CENTERIMAGE | SS_REALSIZECONTROL,
+                                    SS_ICON | SS_REALSIZEIMAGE);
+                wndIcon.SetIcon(m_appIcon);
+                wndIcon.SetWindowPos(nullptr, 0, 0, size, size,
+                                     SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+                wndIcon.Invalidate();
             }
 
             LRESULT OnTimer(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled)
@@ -199,6 +240,35 @@ namespace nglab
             ClientInfo m_clientInfo;
             CButton m_cancelButton;
             int m_timer = 0;
+
+        private:
+            enum { WM_REFRESH_APP_ICON = WM_APP + 0x104 };
+
+            LRESULT OnAppIconDpiChanged(UINT, WPARAM, LPARAM, BOOL &handled)
+            {
+                // Keep the native dialog scaling, then update the image.
+                this->PostMessage(WM_REFRESH_APP_ICON);
+                handled = FALSE;
+                return 0;
+            }
+
+            LRESULT OnRefreshAppIcon(UINT, WPARAM, LPARAM, BOOL &)
+            {
+                loadAppIcon();
+                return 0;
+            }
+
+            LRESULT OnAppIconWindowDestroyed(UINT, WPARAM, LPARAM, BOOL &handled)
+            {
+                if (!m_appIcon.IsNull())
+                    m_appIcon.DestroyIcon();
+                m_appIconSize = 0;
+                handled = FALSE;
+                return 0;
+            }
+
+            CIcon m_appIcon;
+            int m_appIconSize = 0;
         };
     }
 }
