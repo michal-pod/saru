@@ -42,8 +42,14 @@ namespace nglab
             void stop();
 
         private:
+            void disconnectAllClients();
+            void releaseClosedClients();
+
             std::string m_pipeName;
             std::vector<std::unique_ptr<AsyncServer>> m_Clients;
+            // Disconnected clients whose worker thread is still running. They are not
+            // waited on and are destroyed once the worker finishes.
+            std::vector<std::unique_ptr<AsyncServer>> m_closingClients;
             std::thread m_ServerThread;
             HANDLE m_stopEvent;
 

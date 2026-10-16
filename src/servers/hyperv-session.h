@@ -90,6 +90,16 @@ namespace nglab
 
             char type() const override;
 
+            void cancelPendingOperations() override
+            {
+                WindowsSession<HyperVSession, WindowsSessionType::HyperV>::cancelPendingOperations();
+            }
+
+            bool hasPendingOperations() const override
+            {
+                return Session::hasPendingOperations();
+            }
+
         private:
             SOCKET m_hvSocket;
             WSAEVENT m_hEventConnect;

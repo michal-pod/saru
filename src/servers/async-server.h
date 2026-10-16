@@ -37,7 +37,11 @@ namespace nglab
             virtual ULONG clientPid() const = 0;
 
             virtual char type() const = 0;
-    
+
+            // Called when the client is gone, closes dialogs of pending requests
+            virtual void cancelPendingOperations() = 0;
+            // While true a worker thread still uses the session, it must not be destroyed
+            virtual bool hasPendingOperations() const = 0;
         };
     }
 }

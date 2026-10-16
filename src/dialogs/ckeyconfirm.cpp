@@ -28,8 +28,8 @@
 
 using namespace nglab::saru;
 
-CKeyConfirm::CKeyConfirm(const KeyBase &key, ClientInfo &clientInfo, WindowsSessionType sessionType)
-    : CUserInputDialog<CKeyConfirm>(clientInfo),
+CKeyConfirm::CKeyConfirm(const KeyBase &key, ClientInfo &clientInfo, WindowsSessionType sessionType, UserInputCancellation &cancellation)
+    : CUserInputDialog<CKeyConfirm>(clientInfo, cancellation),
       LogEnabler("CKeyConfirm")
 {
     m_keyInfo.Format(
@@ -91,6 +91,7 @@ LRESULT CKeyConfirm::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL 
     auto llog = Logger::instance();
     llog.debug("CKeyConfirm created for app '{}' (PID: {})", m_clientInfo.ClientPath.string(), m_clientInfo.ClientPid);
 
+    attachCancellation();
     forceIntoForeground();
 
     DoDataExchange(FALSE);

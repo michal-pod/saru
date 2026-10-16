@@ -67,7 +67,7 @@ namespace nglab
             CHAIN_MSG_MAP(CUserInputDialog<CKeySelectionDlg>)
             END_MSG_MAP()
 
-            CKeySelectionDlg(KeyListProvider keyListProvider, const ClientInfo &clientInfo, WindowsSessionType sessionType);
+            CKeySelectionDlg(KeyListProvider keyListProvider, const ClientInfo &clientInfo, WindowsSessionType sessionType, UserInputCancellation &cancellation);
             ~CKeySelectionDlg();
 
             virtual BOOL PreTranslateMessage(MSG *pMsg);

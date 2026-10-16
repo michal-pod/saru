@@ -263,6 +263,12 @@ namespace nglab::saru
     template <typename T, WindowsSessionType SessionType>
     bool WindowsSession<T, SessionType>::confirmRequest(const KeyBase &key)
     {
+        if (m_userInputCancellation.isCancelled())
+        {
+            log.debug("Client disconnected, denying use of key {}", key.fingerprint());
+            return false;
+        }
+
         const auto confirmationStatus = rememberedConfirmation(key.fingerprint());
         if (confirmationStatus == RememberedAsConfirmed || confirmationStatus == RememberedAsDenied)
         {
@@ -274,7 +280,7 @@ namespace nglab::saru
 
         clientInfo.IsForwarded = isForwarded();
 
-        CKeyConfirm confirmDialog(key, clientInfo, SessionType);
+        CKeyConfirm confirmDialog(key, clientInfo, SessionType, m_userInputCancellation);
         const auto dialogResult = confirmDialog.DoModal();
         const bool confirmed = dialogResult == IDYES;
         log.debug("Confirmation dialog result: {}", confirmed ? "confirmed" : "denied");
@@ -335,7 +341,8 @@ namespace nglab::saru
                         return nglab::libssha::KeyManager::instance().listKeys(*this);
                     },
                     clientInfo,
-                    SessionType);
+                    SessionType,
+                    m_userInputCancellation);
                 if (keySelectionDialog.DoModal() == IDOK)
                 {
                     const auto &item = keySelectionDialog.selectedItem();
@@ -402,6 +409,12 @@ namespace nglab::saru
     const std::string WindowsSession<T, SessionType>::VMName() const
     {
         return clientInfo.VMName;
+    }
+
+    template <typename T, WindowsSessionType SessionType>
+    void WindowsSession<T, SessionType>::cancelPendingOperations()
+    {
+        m_userInputCancellation.cancel();
     }
 
     template class WindowsSession<NamedPipeSession, WindowsSessionType::Pipe>;

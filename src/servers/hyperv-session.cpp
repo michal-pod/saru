@@ -100,6 +100,10 @@ namespace nglab
 
         HyperVSession::~HyperVSession()
         {
+            // A worker thread may still use this object and the socket, see Session::joinWorkers
+            cancelPendingOperations();
+            joinWorkers();
+
             if (m_hvSocket != INVALID_SOCKET)
             {
                 closesocket(m_hvSocket);

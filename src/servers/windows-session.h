@@ -23,6 +23,7 @@
 #include <libssha/agent/session.h>
 
 #include "client-info.h"
+#include "dialogs/user-input-cancellation.h"
 
 namespace nglab
 {
@@ -53,8 +54,13 @@ namespace nglab
             std::string client() const;
             const std::string VMName() const;
 
+            // Thread safe. Called when the client is gone: closes the dialog shown
+            // for the pending request and prevents showing new ones.
+            void cancelPendingOperations();
+
         protected:
             ClientInfo clientInfo;
+            UserInputCancellation m_userInputCancellation;
         };
 
         class NamedPipeSession;

@@ -93,6 +93,16 @@ namespace nglab
 
             virtual char type() const override;
 
+            void cancelPendingOperations() override
+            {
+                WindowsSession<NamedPipeSession, WindowsSessionType::Pipe>::cancelPendingOperations();
+            }
+
+            bool hasPendingOperations() const override
+            {
+                return Session::hasPendingOperations();
+            }
+
         private:
             HANDLE m_hPipe{INVALID_HANDLE_VALUE};
             HANDLE m_hEventConnect{nullptr};

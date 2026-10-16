@@ -168,6 +168,10 @@ namespace nglab
 
         NamedPipeSession::~NamedPipeSession()
         {
+            // A worker thread may still use this object and the pipe, see Session::joinWorkers
+            cancelPendingOperations();
+            joinWorkers();
+
             if (m_hPipe && m_hPipe != INVALID_HANDLE_VALUE)
             {
                 FlushFileBuffers(m_hPipe);

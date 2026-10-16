@@ -25,8 +25,8 @@
 
 using namespace nglab::saru;
 
-CKeySelectionDlg::CKeySelectionDlg(KeyListProvider keyListProvider, const ClientInfo &clientInfo, WindowsSessionType sessionType)
-    : CUserInputDialog<CKeySelectionDlg>(clientInfo),
+CKeySelectionDlg::CKeySelectionDlg(KeyListProvider keyListProvider, const ClientInfo &clientInfo, WindowsSessionType sessionType, UserInputCancellation &cancellation)
+    : CUserInputDialog<CKeySelectionDlg>(clientInfo, cancellation),
       LogEnabler("CKeySelectionDlg"),
       m_keyListProvider(std::move(keyListProvider))
 {
@@ -74,6 +74,7 @@ BOOL CKeySelectionDlg::PreTranslateMessage(MSG *pMsg)
 
 LRESULT CKeySelectionDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled)
 {
+    attachCancellation();
     forceIntoForeground();
 
     loadAppIcon();

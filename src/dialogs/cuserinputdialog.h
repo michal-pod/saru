@@ -24,6 +24,7 @@
 #include "servers/client-info.h"
 #include "cdpiresourceicons.h"
 #include "cexecutableicon.h"
+#include "user-input-cancellation.h"
 
 namespace nglab
 {
@@ -44,8 +45,8 @@ namespace nglab
 
             };
 
-            CUserInputDialog(const ClientInfo &clientInfo)
-                : LogEnabler("CUserInputDialog"), m_clientInfo(clientInfo)
+            CUserInputDialog(const ClientInfo &clientInfo, UserInputCancellation &cancellation)
+                : LogEnabler("CUserInputDialog"), m_clientInfo(clientInfo), m_cancellation(cancellation)
             {
             }
 
@@ -53,9 +54,29 @@ namespace nglab
             MESSAGE_HANDLER(WM_DPICHANGED, OnAppIconDpiChanged)
             MESSAGE_HANDLER(WM_DPICHANGED_AFTERPARENT, OnAppIconDpiChanged)
             MESSAGE_HANDLER(WM_REFRESH_APP_ICON, OnRefreshAppIcon)
+            MESSAGE_HANDLER(WM_NCDESTROY, OnCancellationWindowDestroyed)
             MESSAGE_HANDLER(WM_NCDESTROY, OnAppIconWindowDestroyed)
             CHAIN_MSG_MAP(CDpiResourceIcons<T>)
             END_MSG_MAP()
+
+            // Hides CDialogImpl::DoModal: a cancelled session (client gone) never
+            // shows the dialog and gets the cancel result immediately.
+            INT_PTR DoModal(HWND hWndParent = ::GetActiveWindow(), LPARAM dwInitParam = NULL)
+            {
+                if (m_cancellation.isCancelled())
+                {
+                    log.debug("User input cancelled before showing the dialog");
+                    return T::CancelButtonId;
+                }
+                return CDialogImpl<T>::DoModal(hWndParent, dwInitParam);
+            }
+
+            // Must be called from WM_INITDIALOG of the derived dialog, ATL does not
+            // pass that message to this class.
+            void attachCancellation()
+            {
+                m_cancellation.attach(this->m_hWnd);
+            }
 
             void initTimeout()
             {
@@ -238,6 +259,13 @@ namespace nglab
                 return 0;
             }
 
+            LRESULT OnCancellationWindowDestroyed(UINT, WPARAM, LPARAM, BOOL &handled)
+            {
+                m_cancellation.detach();
+                handled = FALSE;
+                return 0;
+            }
+
             LRESULT OnAppIconWindowDestroyed(UINT, WPARAM, LPARAM, BOOL &handled)
             {
                 if (!m_appIcon.IsNull())
@@ -247,6 +275,7 @@ namespace nglab
                 return 0;
             }
 
+            UserInputCancellation &m_cancellation;
             CIcon m_appIcon;
             int m_appIconSize = 0;
         };

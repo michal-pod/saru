@@ -76,7 +76,7 @@ namespace nglab
 
             END_DDX_MAP()
 
-            CKeyConfirm(const KeyBase &key, ClientInfo& clientInfo, WindowsSessionType sessionType);
+            CKeyConfirm(const KeyBase &key, ClientInfo& clientInfo, WindowsSessionType sessionType, UserInputCancellation &cancellation);
             ~CKeyConfirm();
 
             virtual BOOL PreTranslateMessage(MSG *pMsg);

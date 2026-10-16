@@ -49,8 +49,32 @@ namespace nglab
             if (index < m_Clients.size())
             {
                 log.debug("Disconnecting client PID={}", m_Clients[index]->clientPid());
+                auto client = std::move(m_Clients[index]);
                 m_Clients.erase(m_Clients.begin() + index);
+
+                // Destroying a session while its worker thread shows a dialog would block
+                // this thread and crash once the worker calls back into the session.
+                client->cancelPendingOperations();
+                if (client->hasPendingOperations())
+                {
+                    log.debug("Client PID={} has a pending request, deferring its destruction", client->clientPid());
+                    m_closingClients.push_back(std::move(client));
+                }
             }
+        }
+
+        void PipeServer::disconnectAllClients()
+        {
+            while (!m_Clients.empty())
+            {
+                disconnectClient(m_Clients.size() - 1);
+            }
+        }
+
+        void PipeServer::releaseClosedClients()
+        {
+            std::erase_if(m_closingClients, [](const std::unique_ptr<AsyncServer> &client)
+                          { return !client->hasPendingOperations(); });
         }
 
         void PipeServer::start()
@@ -148,6 +172,8 @@ namespace nglab
                     FALSE,
                     1000); // 1 second timeout
 
+                releaseClosedClients();
+
                 if(steady_clock::now() - last_maintenance_check > std::chrono::seconds(1)){
                     KeyManager::instance().cleanupExpiredKeys();
 
@@ -180,7 +206,9 @@ namespace nglab
                 if(dwResult == WAIT_OBJECT_0 + vecHandles.size() -1 )
                 {
                     log.info("Stop event signaled, exiting PipeServer run loop");
-                    m_Clients.clear();
+                    disconnectAllClients();
+                    // Dialogs are cancelled already, destructors wait only for them to close
+                    m_closingClients.clear();
                     break;
                 }
 
@@ -280,7 +308,7 @@ namespace nglab
                     if (error == ERROR_INVALID_HANDLE)
                     {
                         log.error("Invalid handle detected. Rebuilding handle list...");
-                        m_Clients.clear();
+                        disconnectAllClients();
                         m_Clients.push_back(std::make_unique<NamedPipeSession>(m_pipeName));
                         continue; // Restart the loop to rebuild vecHandles
                     }
