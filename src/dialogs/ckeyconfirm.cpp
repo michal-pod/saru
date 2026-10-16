@@ -63,16 +63,16 @@ CKeyConfirm::CKeyConfirm(const KeyBase &key, ClientInfo &clientInfo, WindowsSess
     const std::string appConnectingExecutable = m_clientInfo.ConnectingApplicationPath.filename().string();
     if (sessionType == WindowsSessionType::HyperV)
     {
-        m_label.Format("The application '%s' %sfrom virtual machine '%s' is requesting to use the following SSH key.%s",
+        m_label.Format("The application '%s' %sfrom virtual machine '%s' is requesting to use the following SSH key.",
                        appExecutable.c_str(), forwardedStr.c_str(), m_clientInfo.VMName.c_str());
     }
     else if(m_clientInfo.ClientPath != m_clientInfo.ConnectingApplicationPath){
-        m_label.Format("The application '%s' (using '%s') %ss requesting to use the following SSH key %s.",
+        m_label.Format("The application '%s' (using '%s') %sis requesting to use the following SSH key %s.",
                        appExecutable.c_str(), appConnectingExecutable.c_str(), forwardedStr.c_str(), sessionTypeStr.c_str());
     }
     else
     {
-        m_label.Format("The application '%s' %ss requesting to use the following SSH key %s.",
+        m_label.Format("The application '%s' %sis requesting to use the following SSH key %s.",
                        appExecutable.c_str(), forwardedStr.c_str(), sessionTypeStr.c_str());
     }
 }
