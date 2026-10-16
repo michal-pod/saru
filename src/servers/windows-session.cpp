@@ -21,6 +21,7 @@
 #include <chrono>
 #include <filesystem>
 #include <format>
+#include <mutex>
 #include <optional>
 #include <unordered_map>
 #include <unordered_set>
@@ -57,6 +58,7 @@ namespace nglab::saru
         };
 
         std::unordered_map<std::string, ConfirmationEntry> confirmationMemory;
+        std::mutex confirmationMemoryMutex;
 
         std::optional<std::filesystem::path> processImagePath(DWORD processId)
         {
@@ -161,6 +163,7 @@ namespace nglab::saru
             return false;
         }
 
+        // Caller must hold confirmationMemoryMutex
         void removeExpiredConfirmations()
         {
             const auto now = std::chrono::steady_clock::now();
@@ -179,6 +182,7 @@ namespace nglab::saru
 
         ConfirmationStatus rememberedConfirmation(const std::string &fingerprint)
         {
+            std::lock_guard<std::mutex> lock(confirmationMemoryMutex);
             removeExpiredConfirmations();
             const auto it = confirmationMemory.find(fingerprint);
             if (it != confirmationMemory.end())
@@ -190,6 +194,7 @@ namespace nglab::saru
 
         void rememberConfirmation(const std::string &fingerprint, ConfirmationStatus status, int durationSeconds)
         {
+            std::lock_guard<std::mutex> lock(confirmationMemoryMutex);
             removeExpiredConfirmations();
             auto &entry = confirmationMemory[fingerprint];
             entry.status = status;
