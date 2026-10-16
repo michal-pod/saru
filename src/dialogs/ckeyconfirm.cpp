@@ -91,7 +91,7 @@ LRESULT CKeyConfirm::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL 
     auto llog = Logger::instance();
     llog.debug("CKeyConfirm created for app '{}' (PID: {})", m_clientInfo.ClientPath.string(), m_clientInfo.ClientPid);
 
-    attachCancellation();
+    initUserInputDialog();
     forceIntoForeground();
 
     DoDataExchange(FALSE);

@@ -16,7 +16,10 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #pragma once
+#include <type_traits>
 #include <shellscalingapi.h>
+
+#include <libssha/key/key-manager-observer.h>
 
 #include "stdatl.h"
 #include "config.h"
@@ -54,7 +57,7 @@ namespace nglab
             MESSAGE_HANDLER(WM_DPICHANGED, OnAppIconDpiChanged)
             MESSAGE_HANDLER(WM_DPICHANGED_AFTERPARENT, OnAppIconDpiChanged)
             MESSAGE_HANDLER(WM_REFRESH_APP_ICON, OnRefreshAppIcon)
-            MESSAGE_HANDLER(WM_NCDESTROY, OnCancellationWindowDestroyed)
+            MESSAGE_HANDLER(WM_NCDESTROY, OnUserInputWindowDestroyed)
             MESSAGE_HANDLER(WM_NCDESTROY, OnAppIconWindowDestroyed)
             CHAIN_MSG_MAP(CDpiResourceIcons<T>)
             END_MSG_MAP()
@@ -72,9 +75,15 @@ namespace nglab
             }
 
             // Must be called from WM_INITDIALOG of the derived dialog, ATL does not
-            // pass that message to this class.
-            void attachCancellation()
+            // pass that message to this class. From here until WM_NCDESTROY the
+            // dialog is fully constructed and has a window, so it may receive
+            // KeyManager events and cancellation from other threads.
+            void initUserInputDialog()
             {
+                if constexpr (std::is_base_of_v<nglab::libssha::KeyManagerObserver, T>)
+                {
+                    nglab::libssha::KeyManager::registerObserver(static_cast<T *>(this));
+                }
                 m_cancellation.attach(this->m_hWnd);
             }
 
@@ -259,9 +268,14 @@ namespace nglab
                 return 0;
             }
 
-            LRESULT OnCancellationWindowDestroyed(UINT, WPARAM, LPARAM, BOOL &handled)
+            LRESULT OnUserInputWindowDestroyed(UINT, WPARAM, LPARAM, BOOL &handled)
             {
                 m_cancellation.detach();
+                if constexpr (std::is_base_of_v<nglab::libssha::KeyManagerObserver, T>)
+                {
+                    // Waits for a callback running in another thread
+                    nglab::libssha::KeyManager::unregisterObserver(static_cast<T *>(this));
+                }
                 handled = FALSE;
                 return 0;
             }

@@ -151,6 +151,10 @@ LRESULT CKeyList::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bH
     // Once registered, its actual location determines the tray's monitor.
     PostMessage(WM_REFRESH_SHELL_ICONS);
 
+    // Events are forwarded to this window, so receive them only while it exists.
+    // Agent servers start after the window is created, no event is missed.
+    nglab::libssha::KeyManager::registerObserver(this);
+
     return TRUE;
 }
 
@@ -241,6 +245,8 @@ LRESULT CKeyList::OnTaskbarCreated(UINT, WPARAM, LPARAM, BOOL &)
 
 LRESULT CKeyList::OnDestroyDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled)
 {
+    nglab::libssha::KeyManager::unregisterObserver(this);
+
     NOTIFYICONDATA nid = {};
     nid.cbSize = sizeof(NOTIFYICONDATA);
     nid.hWnd = m_hWnd;

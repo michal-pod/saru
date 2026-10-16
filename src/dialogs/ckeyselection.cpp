@@ -74,7 +74,7 @@ BOOL CKeySelectionDlg::PreTranslateMessage(MSG *pMsg)
 
 LRESULT CKeySelectionDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled)
 {
-    attachCancellation();
+    initUserInputDialog();
     forceIntoForeground();
 
     loadAppIcon();
