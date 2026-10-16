@@ -92,6 +92,7 @@ namespace nglab
 
             void cancelPendingOperations() override
             {
+                stopProcessing();
                 WindowsSession<HyperVSession, WindowsSessionType::HyperV>::cancelPendingOperations();
             }
 

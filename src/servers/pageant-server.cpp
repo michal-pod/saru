@@ -159,7 +159,22 @@ LRESULT CPageantServer::OnCopyData(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
             session = m_sessions.emplace(processId, processId).first;
         }
         PageantSession &pageantSession = session->second;
-        pageantSession.process(static_cast<uint8_t *>(pMapView), mappingSize);
+
+        // Copy first, the client can still modify the shared memory. Pass exactly one
+        // frame, the rest of the mapping is not part of the request.
+        secure_vector<uint8_t> request(
+            static_cast<const uint8_t *>(pMapView), static_cast<const uint8_t *>(pMapView) + mappingSize);
+        const size_t requestLength = 4 + ((static_cast<size_t>(request[0]) << 24) |
+                                          (static_cast<size_t>(request[1]) << 16) |
+                                          (static_cast<size_t>(request[2]) << 8) |
+                                          static_cast<size_t>(request[3]));
+        if (requestLength > mappingSize || !pageantSession.process(request.data(), requestLength))
+        {
+            log.error("Rejected Pageant request with an invalid length");
+            UnmapViewOfFile(pMapView);
+            CloseHandle(hMapping);
+            return FALSE;
+        }
         pageantSession.touch();
 
         const auto &response = pageantSession.getResponse();

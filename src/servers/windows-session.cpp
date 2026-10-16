@@ -325,13 +325,9 @@ namespace nglab::saru
     void WindowsSession<T, SessionType>::processRequestIdentities(const nglab::libssha::Message &msg)
     {
         CRegKey key;
-        if (key.Open(HKEY_CURRENT_USER, SARU_KEY_ROOT, KEY_READ) != ERROR_SUCCESS)
-        {
-            return;
-        }
-
         DWORD showKeySelection = 0;
-        if (key.QueryDWORDValue("ShowKeySelection", showKeySelection) == ERROR_SUCCESS && showKeySelection == 1)
+        if (key.Open(HKEY_CURRENT_USER, SARU_KEY_ROOT, KEY_READ) == ERROR_SUCCESS &&
+            key.QueryDWORDValue("ShowKeySelection", showKeySelection) == ERROR_SUCCESS && showKeySelection == 1)
         {
             log.debug("Showing key selection dialog for identities request");
 
@@ -362,7 +358,7 @@ namespace nglab::saru
                 responseMessage.addIdentity(item.blob, item.comment);
             }
             auto response = responseMessage.serialize();
-            send(response);
+            respond(response);
             return;
         }
 

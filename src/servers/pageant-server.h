@@ -72,6 +72,12 @@ namespace nglab
                 }
             }
 
+            ~PageantSession()
+            {
+                // The worker thread uses m_response, see Session::joinWorkers
+                joinWorkers();
+            }
+
             virtual bool confirmRequest(const KeyBase &key)
             {
                 return WindowsSession<PageantSession, WindowsSessionType::Pageant>::confirmRequest(key);

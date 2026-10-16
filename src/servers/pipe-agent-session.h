@@ -16,6 +16,7 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #pragma once
+#include <deque>
 #include <filesystem>
 #include <mutex>
 #include <string>
@@ -77,7 +78,7 @@ namespace nglab
             }
             bool getClientInfo();
             void initRead();
-            virtual void onRead(DWORD dwBytesRead);
+            virtual bool onRead(DWORD dwBytesRead);
             virtual HANDLE hEventConnect() const;
             virtual HANDLE hEventRead() const;
             virtual HANDLE hEventWrite() const;
@@ -95,6 +96,7 @@ namespace nglab
 
             void cancelPendingOperations() override
             {
+                stopProcessing();
                 WindowsSession<NamedPipeSession, WindowsSessionType::Pipe>::cancelPendingOperations();
             }
 
@@ -104,6 +106,8 @@ namespace nglab
             }
 
         private:
+            bool startWrite();
+
             HANDLE m_hPipe{INVALID_HANDLE_VALUE};
             HANDLE m_hEventConnect{nullptr};
             HANDLE m_hEventRead{nullptr};
@@ -114,6 +118,8 @@ namespace nglab
             PSID m_sClientSid;
             std::vector<uint8_t> m_readBuffer;
             secure_vector<uint8_t> m_writeBuffer;
+            // Replies waiting for the pending write to complete
+            std::deque<secure_vector<uint8_t>> m_writeQueue;
             bool m_writePending{false};
             std::mutex m_writeMutex;
         };

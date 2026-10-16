@@ -192,45 +192,61 @@ namespace nglab
         bool NamedPipeSession::send(secure_vector<uint8_t> &data)
         {
             std::lock_guard<std::mutex> lock(m_writeMutex);
-            if (m_writePending)
-            {
-                log.error("Cannot send a response while another write is pending");
-                return false;
-            }
-
-            m_writeBuffer = data;
+            m_writeQueue.push_back(data);
             memset(data.data(), 0x42, data.size());
 
-            DWORD bytesWritten = 0;
-            ResetEvent(m_hEventWrite);
-            ZeroMemory(&m_ovWrite, sizeof(OVERLAPPED));
-            m_ovWrite.hEvent = m_hEventWrite;
-            BOOL bResult = WriteFile(m_hPipe, m_writeBuffer.data(), static_cast<DWORD>(m_writeBuffer.size()), &bytesWritten, &m_ovWrite);
-            if (bResult)
+            // The reply goes out after the pending one, see onWritten
+            if (m_writePending)
             {
-                if (bytesWritten != m_writeBuffer.size())
+                return true;
+            }
+
+            return startWrite();
+        }
+
+        // Caller must hold m_writeMutex
+        bool NamedPipeSession::startWrite()
+        {
+            while (!m_writeQueue.empty())
+            {
+                m_writeBuffer = std::move(m_writeQueue.front());
+                m_writeQueue.pop_front();
+
+                DWORD bytesWritten = 0;
+                ResetEvent(m_hEventWrite);
+                ZeroMemory(&m_ovWrite, sizeof(OVERLAPPED));
+                m_ovWrite.hEvent = m_hEventWrite;
+                BOOL bResult = WriteFile(m_hPipe, m_writeBuffer.data(), static_cast<DWORD>(m_writeBuffer.size()), &bytesWritten, &m_ovWrite);
+                if (bResult)
                 {
-                    log.error("Incomplete synchronous write: {} of {} bytes", bytesWritten, m_writeBuffer.size());
+                    const bool complete = bytesWritten == m_writeBuffer.size();
+                    if (!complete)
+                    {
+                        log.error("Incomplete synchronous write: {} of {} bytes", bytesWritten, m_writeBuffer.size());
+                    }
+
+                    memset(m_writeBuffer.data(), 0x42, m_writeBuffer.size());
+                    m_writeBuffer.clear();
+                    ResetEvent(m_hEventWrite);
+                    if (!complete)
+                    {
+                        return false;
+                    }
+                    continue;
+                }
+
+                if (GetLastError() != ERROR_IO_PENDING)
+                {
+                    log.error("Failed to write to pipe");
                     memset(m_writeBuffer.data(), 0x42, m_writeBuffer.size());
                     m_writeBuffer.clear();
                     return false;
                 }
 
-                memset(m_writeBuffer.data(), 0x42, m_writeBuffer.size());
-                m_writeBuffer.clear();
-                ResetEvent(m_hEventWrite);
+                m_writePending = true;
                 return true;
             }
 
-            if (GetLastError() != ERROR_IO_PENDING)
-            {
-                log.error("Failed to write to pipe");
-                memset(m_writeBuffer.data(), 0x42, m_writeBuffer.size());
-                m_writeBuffer.clear();
-                return false;
-            }
-
-            m_writePending = true;
             return true;
         }
 
@@ -263,11 +279,18 @@ namespace nglab
             }
         }
 
-        void NamedPipeSession::onRead(DWORD dwBytesRead)
+        bool NamedPipeSession::onRead(DWORD dwBytesRead)
         {
-            process(m_readBuffer.data(), dwBytesRead);
+            const bool processed = process(m_readBuffer.data(), dwBytesRead);
             memset(m_readBuffer.data(), 0x42, dwBytesRead);
+            if (!processed)
+            {
+                log.error("Closing connection of client PID={} after a protocol error", clientInfo.ClientPid);
+                return false;
+            }
+
             initRead();
+            return true;
         }
 
         HANDLE NamedPipeSession::hEventConnect() const { return m_hEventConnect; }
@@ -315,8 +338,7 @@ namespace nglab
                 log.vdebug("Read {} bytes from client PID={}", dwBytesRead, clientInfo.ClientPid);
                 if (dwBytesRead > 0)
                 {
-                    onRead(dwBytesRead);
-                    return true;
+                    return onRead(dwBytesRead);
                 }
                 else
                 {
@@ -366,7 +388,7 @@ namespace nglab
                 memset(m_writeBuffer.data(), 0x42, m_writeBuffer.size());
                 m_writeBuffer.clear();
                 m_writePending = false;
-                return true;
+                return startWrite();
             }
             else
             {

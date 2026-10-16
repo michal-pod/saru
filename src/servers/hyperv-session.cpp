@@ -222,9 +222,13 @@ namespace nglab
                 if (bytesRead > 0)
                 {
                     log.vdebug("Received {} bytes from Hyper-V client", bytesRead);
-                    process(reinterpret_cast<const uint8_t *>(buffer), bytesRead);
+                    const bool processed = process(reinterpret_cast<const uint8_t *>(buffer), bytesRead);
                     memset(buffer, 0x42, bytesRead);
-                    // Process the received data
+                    if (!processed)
+                    {
+                        log.error("Closing Hyper-V connection after a protocol error");
+                        return false;
+                    }
                 }
                 else if (bytesRead == 0)
                 {
