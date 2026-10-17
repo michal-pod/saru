@@ -17,6 +17,9 @@
 */
 #include "process-info-extension.h"
 
+#include <format>
+#include <stdexcept>
+
 using namespace nglab::saru;
 
 ProcessInfoExtension::ProcessInfoExtension() : LogEnabler("ProcessInfoExtension"),
@@ -45,25 +48,61 @@ void ProcessInfoExtension::deserialize(Deserializer &d)
 
 
     m_uid = d.readBE32();
-    m_user = d.readString();
+    m_user = readText(d, MaxNameLength, "user");
     m_gid = d.readBE32();
-    m_group = d.readString();
-    m_distro = d.readString();    
-    m_type = static_cast<ClientInfoSystemType>(d.readByte());
-    auto hops = d.readBE32(); // number of hops, currently unused
+    m_group = readText(d, MaxNameLength, "group");
+    m_distro = readText(d, MaxNameLength, "distro");
+
+    const auto type = d.readByte();
+    if (type != Linux && type != FreeBSD && type != Windows)
+    {
+        throw std::runtime_error(std::format("ProcessInfoExtension: invalid system type {}", type));
+    }
+    m_type = static_cast<ClientInfoSystemType>(type);
+
+    // The first hop is the client process, callers rely on at least one
+    auto hops = d.readBE32();
+    if (hops == 0 || hops > MaxHops)
+    {
+        throw std::runtime_error(std::format("ProcessInfoExtension: invalid number of hops {}", hops));
+    }
 
     log.debug("Deserialized ProcessInfoExtension: uid={}, user={}, gid={}, group={}, hops={}, distro={}, type={}",
-              m_uid, m_user, m_gid, m_group, hops, m_distro, static_cast<uint8_t>(m_type));
+              m_uid, m_user, m_gid, m_group, hops, m_distro, type);
     auto data = d.readBlob();
     log.vdebug("Read hops blob of size: {}", data.size());
     Deserializer hopDeser(data);
+    std::vector<std::string> path;
     while(hops-- > 0){
         auto hop_pid = hopDeser.readBE32();
-        auto hop_path = hopDeser.readString();
-        m_path.push_back(hop_path);
+        auto hop_path = readText(hopDeser, MaxPathLength, "path");
+        path.push_back(hop_path);
         log.vdebug("Read hop: pid={}, path={}", hop_pid, hop_path);
     }
 
-    log.vdebug("remaining data size after deserialization: {}", d.remaining());
-    
+    if (hopDeser.remaining() != 0 || d.remaining() != 0)
+    {
+        throw std::runtime_error("ProcessInfoExtension: unexpected trailing data");
+    }
+
+    m_path = std::move(path);
+}
+
+std::string ProcessInfoExtension::readText(Deserializer &d, size_t maxLength, const char *field)
+{
+    auto text = d.readString();
+    if (text.size() > maxLength)
+    {
+        throw std::runtime_error(std::format("ProcessInfoExtension: {} is too long", field));
+    }
+
+    // Control characters (new lines in particular) could make a misleading confirmation dialog
+    for (const unsigned char c : text)
+    {
+        if (c < 0x20 || c == 0x7F)
+        {
+            throw std::runtime_error(std::format("ProcessInfoExtension: {} contains control characters", field));
+        }
+    }
+    return text;
 }

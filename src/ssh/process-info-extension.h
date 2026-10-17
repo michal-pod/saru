@@ -48,6 +48,11 @@ namespace nglab
                                      public LogEnabler
         {
         public:
+            // Limits for data sent by clients from WSL or a VM, the values are shown in confirmation dialogs
+            static constexpr uint32_t MaxHops = 32;
+            static constexpr size_t MaxNameLength = 256;
+            static constexpr size_t MaxPathLength = 4096;
+
             ProcessInfoExtension();
 
             virtual void serialize(Serializer &s) const override;
@@ -75,6 +80,8 @@ namespace nglab
             void setType(ClientInfoSystemType type) { m_type = type; }
 
         private:
+            static std::string readText(Deserializer &d, size_t maxLength, const char *field);
+
             uint32_t m_uid;
             std::string m_user;
             uint32_t m_gid;

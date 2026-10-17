@@ -380,6 +380,12 @@ namespace nglab::saru
             return false;
         }
 
+        if (extension->path().empty())
+        {
+            log.error("Process info without client path");
+            return false;
+        }
+
         clientInfo.ClientInfo = std::format("{} (user {}/{})", extension->path().front(), extension->user(), extension->uid());
         clientInfo.ClientPath = extension->path().front();
         clientInfo.HopPaths = extension->path();
