@@ -102,6 +102,17 @@ namespace nglab::saru
             return parents;
         }
 
+        bool showOriginatingProcess()
+        {
+            CRegKey key;
+            DWORD value = 1;
+            if (key.Open(HKEY_CURRENT_USER, SARU_KEY_ROOT, KEY_READ) == ERROR_SUCCESS)
+            {
+                key.QueryDWORDValue("ShowOriginatingProcess", value);
+            }
+            return value != 0;
+        }
+
         std::vector<std::filesystem::path> originatingProcessSkipExecutables()
         {
             CRegKey key;
@@ -221,6 +232,12 @@ namespace nglab::saru
             "Connecting application PID={}, Path={}",
             clientInfo.ClientPid,
             clientInfo.ConnectingApplicationPath.string());
+
+        // Without it dialogs show the connecting application, e.g. ssh.exe
+        if (!showOriginatingProcess())
+        {
+            return true;
+        }
 
         const auto skipExecutables = originatingProcessSkipExecutables();
         if (!shouldSkipProcess(clientInfo.ClientPath, skipExecutables))
