@@ -55,7 +55,8 @@ namespace
             TaskBox,
             KeyAdded,
             KeyRemoved,
-            KeysCleared
+            KeysCleared,
+            LockChanged
         } type;
         std::string title;
         std::string message;
@@ -107,6 +108,11 @@ BOOL CKeyList::PreTranslateMessage(MSG *pMsg)
 LRESULT CKeyList::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled)
 {
     refreshWindowIcons();
+
+    CHAR szTitle[256] = {};
+    GetWindowText(szTitle, sizeof(szTitle));
+    m_baseTitle = szTitle;
+
     m_keyList.SubclassWindow(GetDlgItem(IDC_KEY_LIST));
     m_keyList.SetExtendedListViewStyle(LVS_EX_FULLROWSELECT | LVS_EX_GRIDLINES);
     m_keyList.ModifyStyle(0, LVS_REPORT | LVS_SINGLESEL | LVS_SHOWSELALWAYS);
@@ -457,6 +463,9 @@ LRESULT CKeyList::OnCrossUIMessage(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
     case CrossUIMessage::KeysCleared:
         keysCleared();
         break;
+    case CrossUIMessage::LockChanged:
+        applyLockState();
+        break;
     default:
         log.warning("Unhandled CrossUIMessage type: {}", static_cast<int>(msg->type));
         break;
@@ -651,12 +660,25 @@ void CKeyList::onLocked()
 {
     log.info("Key manager locked");
     DisplayTrayNotification("Key Manager Locked", "The key manager has been locked.", NIIF_WARNING);
+    postLockChanged();
 }
 
 void CKeyList::onUnlocked()
 {
     log.info("Key manager unlocked");
     DisplayTrayNotification("Key Manager Unlocked", "The key manager has been unlocked.", NIIF_INFO);
+    postLockChanged();
+}
+
+void CKeyList::postLockChanged()
+{
+    // Called in the thread that locked the agent, controls are updated in the GUI thread
+    CrossUIMessage *msg = new CrossUIMessage();
+    msg->type = CrossUIMessage::LockChanged;
+    if (!PostMessage(WM_CROSS_UI_MESSAGE, 0, reinterpret_cast<LPARAM>(msg)))
+    {
+        delete msg;
+    }
 }
 
 void CKeyList::addKeyToList(nglab::libssha::KeyBasePtr key)
@@ -776,6 +798,40 @@ void CKeyList::updateKeyDetails(bool timerTriggered)
     }
 }
 
+void CKeyList::clearKeyDetails()
+{
+    SetDlgItemText(IDC_COPY_PUB_ID_TEXT, "");
+    m_confirmCheck.SetCheck(BST_UNCHECKED);
+    m_keyTimeoutText.SetWindowText("N/A");
+    m_keyConstraints.DeleteAllItems();
+    m_keyConstraints.EnableWindow(FALSE);
+    m_constrainsLoad.EnableWindow(FALSE);
+    m_constrainsClear.EnableWindow(FALSE);
+    m_confirmCheck.EnableWindow(FALSE);
+    m_copyPubId.EnableWindow(FALSE);
+
+    KillTimer(TIMER_ID_REFRESH_LIFETIME);
+}
+
+void CKeyList::applyLockState()
+{
+    // Same as ssh-add -l: a locked agent shows no keys
+    const bool locked = nglab::libssha::KeyManager::instance().isLocked();
+
+    m_keyList.DeleteAllItems();
+    clearKeyDetails();
+    m_keyList.EnableWindow(locked ? FALSE : TRUE);
+    SetWindowText(locked ? (m_baseTitle + LockedTitleSuffix).c_str() : m_baseTitle.c_str());
+
+    if (!locked)
+    {
+        for (const auto &key : nglab::libssha::KeyManager::instance().keys())
+        {
+            addKeyToList(key);
+        }
+    }
+}
+
 LRESULT CKeyList::OnKeySelectionChanged(int idCtrl, LPNMHDR pnmh, BOOL &bHandled)
 {
     NMLISTVIEW *pnmv = reinterpret_cast<NMLISTVIEW *>(pnmh);
@@ -784,16 +840,7 @@ LRESULT CKeyList::OnKeySelectionChanged(int idCtrl, LPNMHDR pnmh, BOOL &bHandled
         if ((pnmv->uNewState & LVIS_SELECTED) == 0)
         {
             log.debug("No key selected");
-            SetDlgItemText(IDC_COPY_PUB_ID_TEXT, "");
-            m_confirmCheck.SetCheck(BST_UNCHECKED);
-            m_keyTimeoutText.SetWindowText("N/A");
-            m_keyConstraints.DeleteAllItems();
-            m_keyConstraints.EnableWindow(FALSE);
-            m_constrainsLoad.EnableWindow(FALSE);
-            m_confirmCheck.EnableWindow(FALSE);
-            m_copyPubId.EnableWindow(FALSE);
-
-            KillTimer(TIMER_ID_REFRESH_LIFETIME);
+            clearKeyDetails();
             return 0;
         }
         updateKeyDetails();
@@ -901,6 +948,13 @@ LRESULT CKeyList::OnLoadConstraint(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOO
     CConstrainsOpenDialog dlg(m_hWnd);
     if (dlg.DoModal())
     {
+        // The agent may have been locked while the file dialog was open
+        if (nglab::libssha::KeyManager::instance().isLocked())
+        {
+            log.warning("Agent is locked, not loading constraints");
+            return 0;
+        }
+
         KeyBasePtr selectedKey = getSelectedKey();
         if (!selectedKey)
         {

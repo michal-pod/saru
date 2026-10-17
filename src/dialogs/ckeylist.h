@@ -17,6 +17,7 @@
 */
 #pragma once
 #include <set>
+#include <string>
 
 #include <libssha/utils/logger.h>
 #include <libssha/key/key-manager-observer.h>
@@ -40,6 +41,9 @@ namespace nglab
                          public LogEnabler
         {
         public:
+            // Appended to the window title while the agent is locked
+            static constexpr const char *LockedTitleSuffix = " [LOCKED]";
+
             enum
             {
                 IDD = IDD_KEY_LIST,
@@ -141,6 +145,10 @@ namespace nglab
             void keyAdded(const nglab::libssha::KeyBasePtr key);
             void keyRemoved(const nglab::libssha::KeyBasePtr key);
             void keysCleared();
+            void postLockChanged();
+            void applyLockState();
+            void clearKeyDetails();
+            std::string m_baseTitle;
             nglab::libssha::KeyBasePtr getSelectedKey();
             CKeyList();
             CDpiListView m_keyList;

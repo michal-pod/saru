@@ -38,7 +38,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 {
     InitCommonControls();
 
-    if(FindWindow(_T("#32770"), _T("Loaded SSH keys list")) != NULL)
+    // The title of a running instance has a suffix while its agent is locked
+    const std::string keyListTitle = "Loaded SSH keys list";
+    if(FindWindow(_T("#32770"), keyListTitle.c_str()) != NULL ||
+       FindWindow(_T("#32770"), (keyListTitle + CKeyList::LockedTitleSuffix).c_str()) != NULL)
     {
         MessageBox(NULL, _T("SARU is already running."), _T("Information"), MB_OK | MB_ICONINFORMATION);
         return 0;
