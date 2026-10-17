@@ -52,6 +52,12 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
         return -1;
     }
 
+    // Destroyed after every CComPtr below, COM must still be initialized when they release
+    struct ComUninitializer
+    {
+        ~ComUninitializer() { CoUninitialize(); }
+    } comUninitializer;
+
     hr = CoInitializeSecurity(
         NULL,
         -1,
@@ -65,7 +71,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     if (FAILED(hr))
     {
         fprintf(stderr, "Failed to initialize COM security: 0x%08X\n", hr);
-        CoUninitialize();
         return -1;
     }
 
@@ -80,7 +85,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     if (FAILED(hr))
     {
         fprintf(stderr, "Failed to create IWbemLocator instance: 0x%08X\n", hr);
-        CoUninitialize();
         return -1;
     }
 
@@ -100,7 +104,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     if (FAILED(hr))
     {
         fprintf(stderr, "Failed to connect to WMI namespace: 0x%08X\n", hr);
-        CoUninitialize();
         return -1;
     }
 
@@ -117,7 +120,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     if (FAILED(hr))
     {
         fprintf(stderr, "Failed to set proxy blanket: 0x%08X\n", hr);
-        CoUninitialize();
         return -1;
     }
 
@@ -130,7 +132,6 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
     if (FAILED(hr))
     {
         fprintf(stderr, "Failed to execute WMI query: 0x%08X\n", hr);
-        CoUninitialize();        
         return hr;
     }
 
@@ -208,6 +209,5 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
         spVssdObj.Release();
     }
 
-    CoUninitialize();
     return 0;
 }
