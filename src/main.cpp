@@ -60,7 +60,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     Logger log(Logger::instance(), "saru");
 
-    // Read debug level from registry
+    // Read debug level and Pageant compatibility from registry, settings apply after restart
+    bool pageantMode = true;
     CRegKey key;
     if (key.Open(HKEY_CURRENT_USER, _T(SARU_KEY_ROOT), KEY_READ) == ERROR_SUCCESS)
     {
@@ -69,6 +70,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         {
             Logger::instance().setLevel(static_cast<Logger::Level>(val));
             log.info("Log level set to {}", Logger::getLevelName(static_cast<Logger::Level>(val)));
+        }
+        if (key.QueryDWORDValue(_T("PageantMode"), val) == ERROR_SUCCESS)
+        {
+            pageantMode = (val != 0);
         }
         key.Close();
     }
@@ -99,7 +104,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     server.start();
     
     CPageantServer pageantServer;
-    if (!pageantServer.Start())
+    if (!pageantMode)
+    {
+        log.info("Pageant compatibility is disabled by settings");
+    }
+    else if (!pageantServer.Start())
     {
         log.error("Failed to initialize Pageant server");
     }
