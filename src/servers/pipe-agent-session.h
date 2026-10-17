@@ -112,9 +112,9 @@ namespace nglab
             HANDLE m_hEventConnect{nullptr};
             HANDLE m_hEventRead{nullptr};
             HANDLE m_hEventWrite{nullptr};
-            OVERLAPPED m_ovConnect;
-            OVERLAPPED m_ovRead;
-            OVERLAPPED m_ovWrite;
+            OVERLAPPED m_ovConnect{};
+            OVERLAPPED m_ovRead{};
+            OVERLAPPED m_ovWrite{};
             PSID m_sClientSid;
             std::vector<uint8_t> m_readBuffer;
             secure_vector<uint8_t> m_writeBuffer;

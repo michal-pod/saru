@@ -18,6 +18,7 @@
 #include "pipe-agent-session.h"
 
 #include <format>
+#include <initializer_list>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -174,7 +175,21 @@ namespace nglab
 
             if (m_hPipe && m_hPipe != INVALID_HANDLE_VALUE)
             {
-                FlushFileBuffers(m_hPipe);
+                // The kernel may still write to the OVERLAPPED structures and buffers of pending
+                // operations, wait for the cancellation before they are released. Only pending
+                // ones are waited for, the event of a completed operation is never set again.
+                CancelIoEx(m_hPipe, nullptr);
+                for (OVERLAPPED *ov : {&m_ovConnect, &m_ovRead, &m_ovWrite})
+                {
+                    if (!HasOverlappedIoCompleted(ov))
+                    {
+                        DWORD dwTransferred = 0;
+                        GetOverlappedResult(m_hPipe, ov, &dwTransferred, TRUE);
+                    }
+                }
+
+                // No FlushFileBuffers: it waits until the client reads everything, a client that
+                // stopped reading would block the server thread
                 DisconnectNamedPipe(m_hPipe);
                 CloseHandle(m_hPipe);
             }
