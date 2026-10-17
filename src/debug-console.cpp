@@ -62,9 +62,12 @@ DebugConsole::DebugConsole() : LogEnabler("DebugConsole")
 
     m_hwndConsole = GetConsoleWindow();
 
+    // A throwing singleton constructor would throw from every instance() call, work without console
     if (m_hwndConsole == nullptr)
     {
-        throw std::runtime_error("Failed to obtain console window handle.");
+        FreeConsole();
+        m_enabled = false;
+        return;
     }
 
     HMENU hMenu = GetSystemMenu(m_hwndConsole, FALSE);

@@ -42,10 +42,17 @@ namespace nglab
             void stop();
 
         private:
+            void serve();
+            void handleClientEvent(size_t clientIndex, size_t eventType);
+            void createPipeListener();
             void disconnectAllClients();
             void releaseClosedClients();
 
             std::string m_pipeName;
+            bool m_namedPipeEnabled{false};
+            // A pipe instance must always wait for the next client; creation is retried until it succeeds
+            bool m_needPipeListener{false};
+            bool m_pipeListenerFailed{false};
             std::vector<std::unique_ptr<AsyncServer>> m_Clients;
             // Disconnected clients whose worker thread is still running. They are not
             // waited on and are destroyed once the worker finishes.

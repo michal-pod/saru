@@ -98,6 +98,64 @@ namespace nglab
 
         void PipeServer::run()
         {
+            // An exception leaving the thread would terminate the whole application
+            try
+            {
+                serve();
+            }
+            catch (const std::exception &e)
+            {
+                log.error("Agent server stopped after an unexpected error: {}", e.what());
+                CKeyList::instance().DisplayTrayNotification("Error", "SSH agent server stopped after an unexpected error.", NIIF_ERROR);
+            }
+            catch (...)
+            {
+                log.error("Agent server stopped after an unknown error");
+                CKeyList::instance().DisplayTrayNotification("Error", "SSH agent server stopped after an unexpected error.", NIIF_ERROR);
+            }
+
+            try
+            {
+                disconnectAllClients();
+            }
+            catch (...)
+            {
+                log.error("Failed to disconnect clients of the stopped agent server");
+            }
+        }
+
+        void PipeServer::createPipeListener()
+        {
+            // Without capacity the next disconnect frees a slot and the listener is created then
+            if (!m_needPipeListener || !hasClientCapacity())
+            {
+                return;
+            }
+
+            try
+            {
+                m_Clients.push_back(std::make_unique<NamedPipeSession>(m_pipeName));
+                m_needPipeListener = false;
+                if (m_pipeListenerFailed)
+                {
+                    log.info("Named pipe listener created after an earlier failure");
+                    m_pipeListenerFailed = false;
+                }
+            }
+            catch (const std::exception &e)
+            {
+                // Retried every loop iteration, report only the first failure
+                if (!m_pipeListenerFailed)
+                {
+                    log.error("Failed to create named pipe listener: {}, retrying", e.what());
+                    CKeyList::instance().DisplayTrayNotification("Error", "Failed to create the SSH agent named pipe, retrying.", NIIF_ERROR);
+                    m_pipeListenerFailed = true;
+                }
+            }
+        }
+
+        void PipeServer::serve()
+        {
             bool createNamedPipe = true;
             if(WaitNamedPipe(m_pipeName.c_str(), 0) || GetLastError() == ERROR_SEM_TIMEOUT){
                 log.error("Another instance of the agent server is already running.");
@@ -124,11 +182,10 @@ namespace nglab
                     log.info("Hyper-V Integration Services are not installed, disabling Hyper-V agent support.");
                 }
             }
-            // Create the first client to listen for connections
-            if(createNamedPipe){
-                m_Clients.push_back(std::make_unique<NamedPipeSession>(m_pipeName));
-            }
-            else {
+            // The first client to listen for connections is created in the loop
+            m_namedPipeEnabled = createNamedPipe;
+            m_needPipeListener = createNamedPipe;
+            if(!createNamedPipe){
                 log.trace("Named Pipe agent support is disabled by settings.");
             }
 
@@ -145,11 +202,12 @@ namespace nglab
                 log.error("Failed to create Hyper-V session: {}", e.what());
             }
 
-            auto last_maintenance_check = std::chrono::steady_clock::now();
             auto last_info_update = std::chrono::steady_clock::now() - std::chrono::seconds(60);
 
             while (true)
             {
+                createPipeListener();
+
                 std::vector<HANDLE> vecHandles;
                 vecHandles.clear();
                 for (const auto &client : m_Clients)
@@ -174,27 +232,27 @@ namespace nglab
 
                 releaseClosedClients();
 
-                if(steady_clock::now() - last_maintenance_check > std::chrono::seconds(1)){
-                    KeyManager::instance().cleanupExpiredKeys();
-
-                    last_maintenance_check = std::chrono::steady_clock::now();
-                }
-
                 if (steady_clock::now() - last_info_update > std::chrono::seconds(30)){
-                    //log.info("Updating debug console title with session info");
-                    auto& debug_console = DebugConsole::instance();
-                    std::unordered_map<char,size_t> session_counts;
-                    for(auto & client : m_Clients){
-                        session_counts[client->type()]++;
-                    }
-                    std::string info_str = "SARU Agent Sessions: ";
-                    for(auto& [type,count] : session_counts){
-                        info_str += std::format("{}={}, ", type, count);
-                    }
-                    info_str += std::format("total={}", m_Clients.size());
-                    info_str += std::format(" | Keys loaded: {}", KeyManager::instance().keyCount());
-                    debug_console.setTitle(info_str);
                     last_info_update = std::chrono::steady_clock::now();
+                    try
+                    {
+                        auto& debug_console = DebugConsole::instance();
+                        std::unordered_map<char,size_t> session_counts;
+                        for(auto & client : m_Clients){
+                            session_counts[client->type()]++;
+                        }
+                        std::string info_str = "SARU Agent Sessions: ";
+                        for(auto& [type,count] : session_counts){
+                            info_str += std::format("{}={}, ", type, count);
+                        }
+                        info_str += std::format("total={}", m_Clients.size());
+                        info_str += std::format(" | Keys loaded: {}", KeyManager::instance().keyCount());
+                        debug_console.setTitle(info_str);
+                    }
+                    catch (const std::exception &e)
+                    {
+                        log.error("Failed to update debug console title: {}", e.what());
+                    }
                 }
 
                 if (dwResult == WAIT_TIMEOUT)
@@ -224,79 +282,25 @@ namespace nglab
                         continue;
                     }
 
-                    AsyncServer &client = *m_Clients[clientIndex];
-
-                    if (eventType == 0)
+                    // A failure of one client must not stop serving the others
+                    const AsyncServer *client = m_Clients[clientIndex].get();
+                    try
                     {
-                        log.debug("Connect event for client index {}", clientIndex);
-                        if (typeid(*m_Clients[clientIndex]) == typeid(HyperVSession))
-                        {
-                            log.vdebug("New Hyper-V client connected, PID={}", client.clientPid());
-                            HyperVSession &hvClient = static_cast<HyperVSession &>(client);
-                            // WSA Event need special handling because we can have only one event
-                            // per socket
-
-                            SOCKET newSocket = INVALID_SOCKET;
-
-                            if (hvClient.handleEvents(newSocket))
-                            {
-                                if (newSocket != INVALID_SOCKET)
-                                {
-                                    if (!hasClientCapacity())
-                                    {
-                                        log.warning("Client limit ({}) reached, rejecting Hyper-V connection", MaxClients);
-                                        closesocket(newSocket);
-                                        continue;
-                                    }
-
-                                    // Create a new HyperVSession for the new socket
-                                    log.debug("Hyper-V client accepted new connection, PID={}", hvClient.clientPid());
-
-                                    m_Clients.push_back(std::make_unique<HyperVSession>(newSocket, hvClient.VMName()));
-                                    continue;
-                                }
-                            }
-                            else
-                            {
-                                disconnectClient(clientIndex);
-                            }
-                        }
-                        else if (typeid(*m_Clients[clientIndex]) == typeid(NamedPipeSession))
-                        {
-                            log.debug("New Named Pipe client connected, PID={}", client.clientPid());
-                            if (client.onConnected())
-                            {
-                                if (!hasClientCapacity())
-                                {
-                                    log.warning("Client limit ({}) reached, rejecting named pipe connection", MaxClients);
-                                    disconnectClient(clientIndex);
-                                    m_Clients.push_back(std::make_unique<NamedPipeSession>(m_pipeName));
-                                    continue;
-                                }
-
-                                // Create a new client for the next connection
-                                m_Clients.push_back(std::make_unique<NamedPipeSession>(m_pipeName));
-                                continue;
-                            }
-                        }
-                        else
-                        {
-                            throw std::logic_error("Unknown client type");
-                        }
+                        handleClientEvent(clientIndex, eventType);
                     }
-                    else if (eventType == 1)
+                    catch (const std::exception &e)
                     {
-                        if (!client.onRead())
+                        log.error("Failed to handle client event: {}, disconnecting client", e.what());
+                        if (clientIndex < m_Clients.size() && m_Clients[clientIndex].get() == client)
                         {
-                            log.debug("Client PID={} disconnected, removing from list", client.clientPid());
                             disconnectClient(clientIndex);
                         }
                     }
-                    else if (eventType == 2)
+                    catch (...)
                     {
-                        if (!client.onWritten())
+                        log.error("Failed to handle client event: unknown error, disconnecting client");
+                        if (clientIndex < m_Clients.size() && m_Clients[clientIndex].get() == client)
                         {
-                            log.debug("Client PID={} write failed, removing from list", client.clientPid());
                             disconnectClient(clientIndex);
                         }
                     }
@@ -309,10 +313,89 @@ namespace nglab
                     {
                         log.error("Invalid handle detected. Rebuilding handle list...");
                         disconnectAllClients();
-                        m_Clients.push_back(std::make_unique<NamedPipeSession>(m_pipeName));
+                        m_needPipeListener = m_namedPipeEnabled;
                         continue; // Restart the loop to rebuild vecHandles
                     }
                     break; // Exit the loop for other critical errors
+                }
+            }
+        }
+
+        void PipeServer::handleClientEvent(size_t clientIndex, size_t eventType)
+        {
+            AsyncServer &client = *m_Clients[clientIndex];
+
+            if (eventType == 0)
+            {
+                log.debug("Connect event for client index {}", clientIndex);
+                if (typeid(client) == typeid(HyperVSession))
+                {
+                    log.vdebug("New Hyper-V client connected, PID={}", client.clientPid());
+                    HyperVSession &hvClient = static_cast<HyperVSession &>(client);
+                    // WSA Event need special handling because we can have only one event
+                    // per socket
+
+                    SOCKET newSocket = INVALID_SOCKET;
+
+                    if (hvClient.handleEvents(newSocket))
+                    {
+                        if (newSocket != INVALID_SOCKET)
+                        {
+                            if (!hasClientCapacity())
+                            {
+                                log.warning("Client limit ({}) reached, rejecting Hyper-V connection", MaxClients);
+                                closesocket(newSocket);
+                                return;
+                            }
+
+                            // Create a new HyperVSession for the new socket
+                            log.debug("Hyper-V client accepted new connection, PID={}", hvClient.clientPid());
+
+                            m_Clients.push_back(std::make_unique<HyperVSession>(newSocket, hvClient.VMName()));
+                        }
+                    }
+                    else
+                    {
+                        disconnectClient(clientIndex);
+                    }
+                }
+                else if (typeid(client) == typeid(NamedPipeSession))
+                {
+                    log.debug("New Named Pipe client connected, PID={}", client.clientPid());
+                    // The instance no longer listens whatever happens below, create one for the next
+                    // connection. Set first, so that it is done also when onConnected throws.
+                    m_needPipeListener = true;
+                    if (!client.onConnected())
+                    {
+                        // The connect event stays signaled, keeping the instance would spin the loop
+                        disconnectClient(clientIndex);
+                    }
+                    else if (!hasClientCapacity())
+                    {
+                        log.warning("Client limit ({}) reached, rejecting named pipe connection", MaxClients);
+                        disconnectClient(clientIndex);
+                    }
+                }
+                else
+                {
+                    log.error("Unknown client type, disconnecting client");
+                    disconnectClient(clientIndex);
+                }
+            }
+            else if (eventType == 1)
+            {
+                if (!client.onRead())
+                {
+                    log.debug("Client PID={} disconnected, removing from list", client.clientPid());
+                    disconnectClient(clientIndex);
+                }
+            }
+            else if (eventType == 2)
+            {
+                if (!client.onWritten())
+                {
+                    log.debug("Client PID={} write failed, removing from list", client.clientPid());
+                    disconnectClient(clientIndex);
                 }
             }
         }

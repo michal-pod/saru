@@ -43,7 +43,8 @@ namespace
     enum
     {
         TIMER_ID_REFRESH_LIFETIME = 1,
-        TIMER_ID_RESTORE_AUTH_LINE
+        TIMER_ID_RESTORE_AUTH_LINE,
+        TIMER_ID_CLEANUP_EXPIRED_KEYS
     };
 
     struct CrossUIMessage
@@ -155,6 +156,9 @@ LRESULT CKeyList::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bH
     // Agent servers start after the window is created, no event is missed.
     nglab::libssha::KeyManager::registerObserver(this);
 
+    // This window lives as long as the application, unlike the agent servers which can stop
+    SetTimer(TIMER_ID_CLEANUP_EXPIRED_KEYS, 1000);
+
     return TRUE;
 }
 
@@ -245,6 +249,7 @@ LRESULT CKeyList::OnTaskbarCreated(UINT, WPARAM, LPARAM, BOOL &)
 
 LRESULT CKeyList::OnDestroyDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandled)
 {
+    KillTimer(TIMER_ID_CLEANUP_EXPIRED_KEYS);
     nglab::libssha::KeyManager::unregisterObserver(this);
 
     NOTIFYICONDATA nid = {};
@@ -277,6 +282,17 @@ LRESULT CKeyList::OnTimer(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL &bHandle
         updateKeyDetails();
 
         KillTimer(TIMER_ID_RESTORE_AUTH_LINE);
+    }
+    else if (wParam == TIMER_ID_CLEANUP_EXPIRED_KEYS)
+    {
+        try
+        {
+            nglab::libssha::KeyManager::instance().cleanupExpiredKeys();
+        }
+        catch (const std::exception &e)
+        {
+            log.error("Failed to remove expired keys: {}", e.what());
+        }
     }
     return 0;
 }
@@ -856,9 +872,25 @@ LRESULT CKeyList::OnCopyPubId(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bH
 LRESULT CKeyList::OnConfirmChanged(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL &bHandled)
 {
     auto key = getSelectedKey();
+    if (!key)
+    {
+        return 0;
+    }
+
     bool needConfirmation = (m_confirmCheck.GetCheck() == BST_CHECKED);
     log.vdebug("Confirmation requirement changed for key {}: {}", key->fingerprint(), needConfirmation);
-    KeyConstrainsLoader::setNeedConfirmation(key, needConfirmation);
+    try
+    {
+        KeyConstrainsLoader::setNeedConfirmation(key, needConfirmation);
+    }
+    catch (const nglab::saru::DialogException &e)
+    {
+        e.show(m_hWnd);
+    }
+    catch (const std::exception &e)
+    {
+        log.error("Failed to set confirmation requirement for key {}: {}", key->fingerprint(), e.what());
+    }
     return 0;
 }
 
@@ -870,6 +902,11 @@ LRESULT CKeyList::OnLoadConstraint(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOO
     if (dlg.DoModal())
     {
         KeyBasePtr selectedKey = getSelectedKey();
+        if (!selectedKey)
+        {
+            return 0;
+        }
+
         try
         {
             KeyConstrainsLoader::loadDestinationConstrains(selectedKey, dlg.getFilePath(), dlg.getPersistent());
@@ -894,6 +931,11 @@ LRESULT CKeyList::OnClearConstraint(WORD wNotifyCode, WORD wID, HWND hWndCtl, BO
 {
     // Clear constraint remains; implementation intentionally left minimal.
     auto key = getSelectedKey();
+    if (!key)
+    {
+        return 0;
+    }
+
     log.debug("Clear constraint command invoked");
     CTaskDialog dlg(m_hWnd);
     dlg.SetWindowTitle(L"Confirm Deletion");
@@ -918,7 +960,18 @@ LRESULT CKeyList::OnClearConstraint(WORD wNotifyCode, WORD wID, HWND hWndCtl, BO
         return 0;
     }
 
-    KeyConstrainsLoader::unloadDestinationConstrains(key, deletePersistent != FALSE);
+    try
+    {
+        KeyConstrainsLoader::unloadDestinationConstrains(key, deletePersistent != FALSE);
+    }
+    catch (const nglab::saru::DialogException &e)
+    {
+        e.show(m_hWnd);
+    }
+    catch (const std::exception &e)
+    {
+        log.error("Failed to clear constraints for key {}: {}", key->fingerprint(), e.what());
+    }
 
     updateKeyDetails();
 
@@ -979,10 +1032,10 @@ nglab::libssha::KeyBasePtr CKeyList::getSelectedKey()
         m_keyList.GetItemText(selectedIndex, 2, szText, sizeof(szText));
 
         auto key = nglab::libssha::KeyManager::instance().getKeyByFingerprint(szText);
+        // The key may have been removed or expired while the list was not refreshed yet
         if (!key)
         {
             log.warning("Key not found for fingerprint: {}", szText);
-            throw std::runtime_error("Selected key not found");
         }
         return key;
     }
