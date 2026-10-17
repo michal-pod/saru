@@ -16,6 +16,7 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #pragma once
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -44,15 +45,23 @@ namespace nglab
         private:
             void serve();
             void handleClientEvent(size_t clientIndex, size_t eventType);
-            void createPipeListener();
+            // A listener must always wait for the next client; its creation is retried until it succeeds
+            struct Listener
+            {
+                const char *name;
+                std::function<std::unique_ptr<AsyncServer>()> create;
+                bool enabled{false};
+                bool needed{false};
+                bool failed{false};
+            };
+
+            void createListener(Listener &listener);
             void disconnectAllClients();
             void releaseClosedClients();
 
             std::string m_pipeName;
-            bool m_namedPipeEnabled{false};
-            // A pipe instance must always wait for the next client; creation is retried until it succeeds
-            bool m_needPipeListener{false};
-            bool m_pipeListenerFailed{false};
+            Listener m_pipeListener;
+            Listener m_hyperVListener;
             std::vector<std::unique_ptr<AsyncServer>> m_Clients;
             // Disconnected clients whose worker thread is still running. They are not
             // waited on and are destroyed once the worker finishes.

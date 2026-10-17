@@ -77,7 +77,7 @@ namespace nglab
                 WindowsSession<NamedPipeSession, WindowsSessionType::Pipe>::processRequestIdentities(msg);
             }
             bool getClientInfo();
-            void initRead();
+            bool initRead();
             virtual bool onRead(DWORD dwBytesRead);
             virtual HANDLE hEventConnect() const;
             virtual HANDLE hEventRead() const;

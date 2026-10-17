@@ -18,7 +18,9 @@
 #include "pipe-server.h"
 
 #include <chrono>
+#include <format>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 #include <windows.h>
@@ -39,7 +41,9 @@ namespace nglab
         using std::chrono::steady_clock;
 
         PipeServer::PipeServer(const std::string &pipeName)
-            : LogEnabler("PipeServer"), m_pipeName(pipeName)
+            : LogEnabler("PipeServer"), m_pipeName(pipeName),
+              m_pipeListener{"named pipe", [this]() { return std::make_unique<NamedPipeSession>(m_pipeName); }},
+              m_hyperVListener{"Hyper-V", []() { return std::make_unique<HyperVSession>(); }}
         {
             m_stopEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
         }
@@ -51,6 +55,13 @@ namespace nglab
                 log.debug("Disconnecting client PID={}", m_Clients[index]->clientPid());
                 auto client = std::move(m_Clients[index]);
                 m_Clients.erase(m_Clients.begin() + index);
+
+                // Whatever the reason, the Hyper-V listener is recreated (e.g. after resume from sleep)
+                const auto *hvClient = dynamic_cast<const HyperVSession *>(client.get());
+                if (hvClient && hvClient->isListener())
+                {
+                    m_hyperVListener.needed = m_hyperVListener.enabled;
+                }
 
                 // Destroying a session while its worker thread shows a dialog would block
                 // this thread and crash once the worker calls back into the session.
@@ -124,32 +135,33 @@ namespace nglab
             }
         }
 
-        void PipeServer::createPipeListener()
+        void PipeServer::createListener(Listener &listener)
         {
             // Without capacity the next disconnect frees a slot and the listener is created then
-            if (!m_needPipeListener || !hasClientCapacity())
+            if (!listener.needed || !hasClientCapacity())
             {
                 return;
             }
 
             try
             {
-                m_Clients.push_back(std::make_unique<NamedPipeSession>(m_pipeName));
-                m_needPipeListener = false;
-                if (m_pipeListenerFailed)
+                m_Clients.push_back(listener.create());
+                listener.needed = false;
+                if (listener.failed)
                 {
-                    log.info("Named pipe listener created after an earlier failure");
-                    m_pipeListenerFailed = false;
+                    log.info("{} listener created after an earlier failure", listener.name);
+                    listener.failed = false;
                 }
             }
             catch (const std::exception &e)
             {
                 // Retried every loop iteration, report only the first failure
-                if (!m_pipeListenerFailed)
+                if (!listener.failed)
                 {
-                    log.error("Failed to create named pipe listener: {}, retrying", e.what());
-                    CKeyList::instance().DisplayTrayNotification("Error", "Failed to create the SSH agent named pipe, retrying.", NIIF_ERROR);
-                    m_pipeListenerFailed = true;
+                    log.error("Failed to create {} listener: {}, retrying", listener.name, e.what());
+                    CKeyList::instance().DisplayTrayNotification(
+                        "Error", std::format("Failed to create the SSH agent {} listener, retrying.", listener.name), NIIF_ERROR);
+                    listener.failed = true;
                 }
             }
         }
@@ -183,30 +195,22 @@ namespace nglab
                 }
             }
             // The first client to listen for connections is created in the loop
-            m_namedPipeEnabled = createNamedPipe;
-            m_needPipeListener = createNamedPipe;
+            m_pipeListener.enabled = m_pipeListener.needed = createNamedPipe;
             if(!createNamedPipe){
                 log.trace("Named Pipe agent support is disabled by settings.");
             }
 
-            try {
-                if(createHyperV)
-                    m_Clients.push_back(std::make_unique<HyperVSession>());
-                else
-                    log.trace("Hyper-V agent support is disabled by settings.");
-            }
-            catch (const std::exception &e)
-            {
-                std::string errMsg = std::format("Failed to create Hyper-V session: {}. Hyper-V agent support will be disabled.", e.what());
-                CKeyList::instance().DisplayTrayNotification("Error", errMsg, NIIF_ERROR);
-                log.error("Failed to create Hyper-V session: {}", e.what());
+            m_hyperVListener.enabled = m_hyperVListener.needed = createHyperV;
+            if(!createHyperV){
+                log.trace("Hyper-V agent support is disabled by settings.");
             }
 
             auto last_info_update = std::chrono::steady_clock::now() - std::chrono::seconds(60);
 
             while (true)
             {
-                createPipeListener();
+                createListener(m_pipeListener);
+                createListener(m_hyperVListener);
 
                 std::vector<HANDLE> vecHandles;
                 vecHandles.clear();
@@ -220,8 +224,8 @@ namespace nglab
                 vecHandles.push_back(m_stopEvent);
                 if (vecHandles.size() > MAXIMUM_WAIT_OBJECTS)
                 {
-                    log.error("Handle limit exceeded: {} handles", vecHandles.size());
-                    break;
+                    // Reported by run(), a silent exit would leave the agent without any listener
+                    throw std::runtime_error(std::format("Handle limit exceeded: {} handles", vecHandles.size()));
                 }
 
                 DWORD dwResult = WaitForMultipleObjects(
@@ -313,10 +317,11 @@ namespace nglab
                     {
                         log.error("Invalid handle detected. Rebuilding handle list...");
                         disconnectAllClients();
-                        m_needPipeListener = m_namedPipeEnabled;
+                        m_pipeListener.needed = m_pipeListener.enabled;
+                        m_hyperVListener.needed = m_hyperVListener.enabled;
                         continue; // Restart the loop to rebuild vecHandles
                     }
-                    break; // Exit the loop for other critical errors
+                    throw std::runtime_error(std::format("WaitForMultipleObjects failed with error {}", error));
                 }
             }
         }
@@ -364,7 +369,7 @@ namespace nglab
                     log.debug("New Named Pipe client connected, PID={}", client.clientPid());
                     // The instance no longer listens whatever happens below, create one for the next
                     // connection. Set first, so that it is done also when onConnected throws.
-                    m_needPipeListener = true;
+                    m_pipeListener.needed = true;
                     if (!client.onConnected())
                     {
                         // The connect event stays signaled, keeping the instance would spin the loop

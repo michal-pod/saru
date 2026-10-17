@@ -278,7 +278,7 @@ namespace nglab
             return findBinary();
         }
 
-        void NamedPipeSession::initRead()
+        bool NamedPipeSession::initRead()
         {
             m_readBuffer.resize(256 * 1024);
             ResetEvent(m_hEventRead);
@@ -289,9 +289,12 @@ namespace nglab
             {
                 if (GetLastError() != ERROR_IO_PENDING)
                 {
-                    log.error("ReadFile failed");
+                    // Without a pending read the session would never get another event
+                    log.error("ReadFile failed, error: {}", GetLastError());
+                    return false;
                 }
             }
+            return true;
         }
 
         bool NamedPipeSession::onRead(DWORD dwBytesRead)
@@ -304,8 +307,7 @@ namespace nglab
                 return false;
             }
 
-            initRead();
-            return true;
+            return initRead();
         }
 
         HANDLE NamedPipeSession::hEventConnect() const { return m_hEventConnect; }
@@ -333,9 +335,7 @@ namespace nglab
                     clientInfo.ClientPid,
                     clientInfo.ConnectingApplicationPath.string(),
                     clientInfo.ClientPath.string());
-                initRead();
-                
-                return true;
+                return initRead();
             }
             else
             {

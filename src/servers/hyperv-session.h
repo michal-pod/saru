@@ -16,6 +16,8 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #pragma once
+#include <deque>
+#include <mutex>
 #include <string>
 #include <vector>
 #include <winsock2.h>
@@ -86,6 +88,8 @@ namespace nglab
 
             bool handleEvents(SOCKET &newSocket);
 
+            bool isListener() const { return m_isServerSocket; }
+
             ULONG clientPid() const;
 
             char type() const override;
@@ -102,11 +106,20 @@ namespace nglab
             }
 
         private:
+            bool acceptClient(SOCKET &newSocket);
+            bool readData();
+            bool flushWrites();
+
             SOCKET m_hvSocket;
-            WSAEVENT m_hEventConnect;
-            HANDLE m_hEventRead;
-            HANDLE m_hEventWrite;
+            WSAEVENT m_hEventConnect{nullptr};
+            HANDLE m_hEventRead{nullptr};
+            HANDLE m_hEventWrite{nullptr};
             bool m_isServerSocket{true};
+            std::vector<uint8_t> m_readBuffer;
+            // The socket is non-blocking, replies that do not fit are sent on FD_WRITE
+            std::mutex m_writeMutex;
+            std::deque<secure_vector<uint8_t>> m_writeQueue;
+            size_t m_writeOffset{0};
         };
 
     }

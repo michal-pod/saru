@@ -73,6 +73,12 @@ CKeyList::CKeyList()
 
 void CKeyList::DisplayTrayNotification(const std::string &title, const std::string &message, DWORD infoType, UINT timeout)
 {
+    // PostMessage without a window posts to the calling thread, the message would leak
+    if (m_hWnd == nullptr)
+    {
+        log.warning("Notification dropped, window does not exist: {}", message);
+        return;
+    }
 
     CrossUIMessage *msg = new CrossUIMessage();
     msg->type = CrossUIMessage::TrayNotify;
@@ -89,6 +95,12 @@ void CKeyList::DisplayTrayNotification(const std::string &title, const std::stri
 
 void CKeyList::DisplayMessageBox(const std::string &title, const std::string &message)
 {
+    if (m_hWnd == nullptr)
+    {
+        log.warning("Message box dropped, window does not exist: {}", message);
+        return;
+    }
+
     CrossUIMessage *msg = new CrossUIMessage();
     msg->type = CrossUIMessage::TaskBox;
     msg->title = title;

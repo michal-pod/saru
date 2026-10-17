@@ -49,6 +49,8 @@ namespace nglab
             if (bind(m_hvSocket, (SOCKADDR *)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR)
             {
                 log.error("Failed to bind Hyper-V socket, error: {}", WSAGetLastError());
+                // The destructor does not run when the constructor throws
+                closesocket(m_hvSocket);
                 throw std::runtime_error("Failed to bind Hyper-V socket");
             }
 #else
@@ -72,6 +74,7 @@ namespace nglab
             if (listen(m_hvSocket, 5) == SOCKET_ERROR)
             {
                 log.error("Failed to listen on Hyper-V socket, error: {}", WSAGetLastError());
+                closesocket(m_hvSocket);
                 throw std::runtime_error("Failed to listen on Hyper-V socket");
             }
 
@@ -126,12 +129,42 @@ namespace nglab
                 throw std::logic_error("Attempt to send data on server socket");
             }
 
-            int bytesSent = ::send(m_hvSocket, reinterpret_cast<const char *>(data.data()), static_cast<int>(data.size()), 0);
+            std::lock_guard<std::mutex> lock(m_writeMutex);
+            m_writeQueue.push_back(data);
             memset(data.data(), 0x42, data.size());
-            if (bytesSent == SOCKET_ERROR)
+            return flushWrites();
+        }
+
+        // Caller must hold m_writeMutex
+        bool HyperVSession::flushWrites()
+        {
+            while (!m_writeQueue.empty())
             {
-                log.error("Failed to send data to Hyper-V client, error: {}", WSAGetLastError());
-                return false;
+                auto &data = m_writeQueue.front();
+                const int bytesSent = ::send(m_hvSocket, reinterpret_cast<const char *>(data.data() + m_writeOffset),
+                                             static_cast<int>(data.size() - m_writeOffset), 0);
+                if (bytesSent == SOCKET_ERROR)
+                {
+                    const int error = WSAGetLastError();
+                    if (error == WSAEWOULDBLOCK)
+                    {
+                        // FD_WRITE is signaled once the socket accepts data again
+                        return true;
+                    }
+
+                    log.error("Failed to send data to Hyper-V client, error: {}", error);
+                    m_writeQueue.clear();
+                    m_writeOffset = 0;
+                    return false;
+                }
+
+                m_writeOffset += static_cast<size_t>(bytesSent);
+                if (m_writeOffset == data.size())
+                {
+                    memset(data.data(), 0x42, data.size());
+                    m_writeQueue.pop_front();
+                    m_writeOffset = 0;
+                }
             }
             return true;
         }
@@ -162,97 +195,125 @@ namespace nglab
 
         bool HyperVSession::handleEvents(SOCKET &newSocket)
         {
-            WSANETWORKEVENTS ne;
-            WSAEnumNetworkEvents(m_hvSocket, m_hEventConnect, &ne);
+            WSANETWORKEVENTS ne{};
+            if (WSAEnumNetworkEvents(m_hvSocket, m_hEventConnect, &ne) == SOCKET_ERROR)
+            {
+                log.error("WSAEnumNetworkEvents failed for Hyper-V socket, error: {}", WSAGetLastError());
+                return false;
+            }
+
             if (ne.lNetworkEvents & FD_ACCEPT)
             {
-                SOCKADDR_HV clientAddr;
-                int addrLen = sizeof(clientAddr);
-                SOCKET clientSocket = accept(m_hvSocket, reinterpret_cast<SOCKADDR *>(&clientAddr), &addrLen);
-                // WSAResetEvent(m_hEventConnect);
-                if (clientSocket == INVALID_SOCKET)
-                {
-                    log.error("Failed to accept Hyper-V connection, error: {}", WSAGetLastError());
-                    return false;
-                }
-
-                auto guidStr = StringConverter::fromGUIDA(clientAddr.VmId);
-
-                CRegKey vmKey;
-                std::string subpath = std::string(SARU_KEY_ROOT "\\HyperVVMs\\") + guidStr;
-                if (vmKey.Open(HKEY_CURRENT_USER, subpath.c_str(), KEY_READ) == ERROR_SUCCESS)
-                {
-                    DWORD enabled = 0;
-                    if (vmKey.QueryDWORDValue("Enabled", enabled) != ERROR_SUCCESS || enabled == 0)
-                    {
-                        log.warning("Connection from Hyper-V VM {} denied: not enabled in settings", guidStr);
-                        closesocket(clientSocket);
-                        return true;
-                    }
-
-                    CHAR vmName[256];
-                    DWORD vmNameSize = sizeof(vmName);
-                    if(vmKey.QueryStringValue("Description", vmName, &vmNameSize) == ERROR_SUCCESS){
-                        log.debug("Setting client info name to {}", vmName);
-                        clientInfo.VMName = vmName;
-                    }
-                    else
-                    {
-                        clientInfo.VMName = guidStr;
-                    }
-                }
-                else
-                {
-                    log.warning("Connection from Hyper-V VM {} denied: no settings found", guidStr);
-                    closesocket(clientSocket);
-                    return true;
-                }
-
-                log.debug("Accepted new Hyper-V connection from VM {}", guidStr);
-
-                newSocket = clientSocket;
-                return true;
+                return acceptClient(newSocket);
             }
+
+            // All recorded events are reset at once, so each of them must be handled here
+            bool keepConnection = true;
             if (ne.lNetworkEvents & FD_READ)
             {
-                log.vdebug("FD_READ event for Hyper-V client");
-                // Handle read event
-                char buffer[256 * 1024];
-                int bytesRead = recv(m_hvSocket, buffer, sizeof(buffer), 0);
-                if (bytesRead > 0)
-                {
-                    log.vdebug("Received {} bytes from Hyper-V client", bytesRead);
-                    const bool processed = process(reinterpret_cast<const uint8_t *>(buffer), bytesRead);
-                    memset(buffer, 0x42, bytesRead);
-                    if (!processed)
-                    {
-                        log.error("Closing Hyper-V connection after a protocol error");
-                        return false;
-                    }
-                }
-                else if (bytesRead == 0)
-                {
-                    log.debug("Hyper-V client disconnected");
-                    return false;
-                }
-                else
-                {
-                    log.error("Failed to read from Hyper-V client, error: {}", WSAGetLastError());
-                    return false;
-                }
-                return true;
+                keepConnection = readData();
             }
-            if (ne.lNetworkEvents & FD_WRITE)
+            if (keepConnection && (ne.lNetworkEvents & FD_WRITE))
             {
                 log.vdebug("FD_WRITE event for Hyper-V client");
-                return true;
+                std::lock_guard<std::mutex> lock(m_writeMutex);
+                keepConnection = flushWrites();
             }
             if (ne.lNetworkEvents & FD_CLOSE)
             {
                 log.debug("FD_CLOSE event for Hyper-V client");
+                keepConnection = false;
+            }
+            return keepConnection;
+        }
+
+        bool HyperVSession::acceptClient(SOCKET &newSocket)
+        {
+            SOCKADDR_HV clientAddr;
+            int addrLen = sizeof(clientAddr);
+            SOCKET clientSocket = accept(m_hvSocket, reinterpret_cast<SOCKADDR *>(&clientAddr), &addrLen);
+            // WSAResetEvent(m_hEventConnect);
+            if (clientSocket == INVALID_SOCKET)
+            {
+                const int error = WSAGetLastError();
+                // The client gave up before it was accepted, the listener is fine
+                if (error == WSAEWOULDBLOCK || error == WSAECONNRESET)
+                {
+                    log.warning("Hyper-V connection was not accepted, error: {}", error);
+                    return true;
+                }
+                log.error("Failed to accept Hyper-V connection, error: {}", error);
                 return false;
             }
-            log.warning("Unknown event for Hyper-V client");
+
+            auto guidStr = StringConverter::fromGUIDA(clientAddr.VmId);
+
+            CRegKey vmKey;
+            std::string subpath = std::string(SARU_KEY_ROOT "\\HyperVVMs\\") + guidStr;
+            if (vmKey.Open(HKEY_CURRENT_USER, subpath.c_str(), KEY_READ) == ERROR_SUCCESS)
+            {
+                DWORD enabled = 0;
+                if (vmKey.QueryDWORDValue("Enabled", enabled) != ERROR_SUCCESS || enabled == 0)
+                {
+                    log.warning("Connection from Hyper-V VM {} denied: not enabled in settings", guidStr);
+                    closesocket(clientSocket);
+                    return true;
+                }
+
+                CHAR vmName[256];
+                DWORD vmNameSize = sizeof(vmName);
+                if(vmKey.QueryStringValue("Description", vmName, &vmNameSize) == ERROR_SUCCESS){
+                    log.debug("Setting client info name to {}", vmName);
+                    clientInfo.VMName = vmName;
+                }
+                else
+                {
+                    clientInfo.VMName = guidStr;
+                }
+            }
+            else
+            {
+                log.warning("Connection from Hyper-V VM {} denied: no settings found", guidStr);
+                closesocket(clientSocket);
+                return true;
+            }
+
+            log.debug("Accepted new Hyper-V connection from VM {}", guidStr);
+
+            newSocket = clientSocket;
+            return true;
+        }
+
+        bool HyperVSession::readData()
+        {
+            log.vdebug("FD_READ event for Hyper-V client");
+            // Not on the stack of the server thread
+            m_readBuffer.resize(256 * 1024);
+            const int bytesRead = recv(m_hvSocket, reinterpret_cast<char *>(m_readBuffer.data()), static_cast<int>(m_readBuffer.size()), 0);
+            if (bytesRead > 0)
+            {
+                log.vdebug("Received {} bytes from Hyper-V client", bytesRead);
+                const bool processed = process(m_readBuffer.data(), static_cast<size_t>(bytesRead));
+                memset(m_readBuffer.data(), 0x42, static_cast<size_t>(bytesRead));
+                if (!processed)
+                {
+                    log.error("Closing Hyper-V connection after a protocol error");
+                    return false;
+                }
+                return true;
+            }
+            if (bytesRead == 0)
+            {
+                log.debug("Hyper-V client disconnected");
+                return false;
+            }
+
+            const int error = WSAGetLastError();
+            if (error == WSAEWOULDBLOCK)
+            {
+                return true;
+            }
+            log.error("Failed to read from Hyper-V client, error: {}", error);
             return false;
         }
 
