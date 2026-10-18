@@ -36,15 +36,17 @@ namespace nglab {
 
             CSID& operator=(CSID&& other) noexcept;
             CSID(CSID&& other) noexcept;
+            ~CSID();
 
             bool operator==(const CSID &other) const;
 
             PSID psid() const { return m_sid; }
 
             private:
+            // Stores a copy of the SID, the caller keeps ownership of sid
             CSID(PSID sid);
+            static CSID readProcessUser();
             PSID m_sid;
-            static PSID m_user_sid;
         };
 
     } // namespace saru

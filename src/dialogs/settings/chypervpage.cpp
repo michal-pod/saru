@@ -228,7 +228,7 @@ LRESULT CHyperVPage::OnRescan(WORD, WORD, HWND, BOOL &)
             if (waitResult == WAIT_OBJECT_0)
             {
                 auto success = GetExitCodeProcess(hProcess, &exitCode);
-                if (success != 0) {
+                if (success == 0) {
                     exitCode = GetLastError();
                 }
 

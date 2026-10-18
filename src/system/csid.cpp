@@ -27,15 +27,15 @@ namespace nglab
     {
         using nglab::libssha::Logger;
 
-        PSID CSID::m_user_sid = nullptr;
-
         CSID CSID::getUser()
         {
-            if (m_user_sid)
-            {
-                return CSID(m_user_sid);
-            }
+            // The user of the process never changes, read it once and return copies
+            static const CSID user = readProcessUser();
+            return CSID(user.m_sid);
+        }
 
+        CSID CSID::readProcessUser()
+        {
             HANDLE hProcess = OpenProcess(MAXIMUM_ALLOWED, FALSE, GetCurrentProcessId());
             if (!hProcess)
             {
@@ -74,7 +74,6 @@ namespace nglab
             }
 
             CSID ret(pTokenUser->User.Sid);
-            m_user_sid = ret.m_sid;
 
             LocalFree(pTokenUser);
             CloseHandle(hToken);
@@ -109,9 +108,11 @@ namespace nglab
             auto& log = Logger::instance();
             PSECURITY_DESCRIPTOR pSD = nullptr;
             PSID pSid = nullptr;
-            if (GetSecurityInfo(hObject, SE_KERNEL_OBJECT, OWNER_SECURITY_INFORMATION, &pSid, nullptr, nullptr, nullptr, &pSD) != ERROR_SUCCESS)
+            const DWORD result = GetSecurityInfo(hObject, SE_KERNEL_OBJECT, OWNER_SECURITY_INFORMATION, &pSid, nullptr, nullptr, nullptr, &pSD);
+            if (result != ERROR_SUCCESS)
             {
-                log.error("GetSecurityInfo failed with code {}", GetLastError());
+                // GetSecurityInfo returns the error code instead of setting the last error
+                log.error("GetSecurityInfo failed with code {}", result);
                 throw std::runtime_error("GetSecurityInfo failed");
             }
 
@@ -175,7 +176,7 @@ namespace nglab
                 throw std::runtime_error("GetTokenInformation failed");
             }
 
-            CSID ret = getSidOfHandle(pTokenUser->User.Sid);
+            CSID ret(pTokenUser->User.Sid);
 
             LocalFree(pTokenUser);
             CloseHandle(hToken);
@@ -187,7 +188,6 @@ namespace nglab
 
         CSID &CSID::operator=(CSID &&other) noexcept
         {
-            fprintf(stderr, "CSID move assignment\n");
             if (this != &other)
             {
                 if (m_sid)
@@ -203,6 +203,14 @@ namespace nglab
         CSID::CSID(CSID &&other) noexcept : LogEnabler("CSID"), m_sid(other.m_sid)
         { 
             other.m_sid = nullptr;
+        }
+
+        CSID::~CSID()
+        {
+            if (m_sid)
+            {
+                LocalFree(m_sid);
+            }
         }
 
         bool CSID::operator==(const CSID &other) const

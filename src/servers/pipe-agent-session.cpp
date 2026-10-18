@@ -19,6 +19,7 @@
 
 #include <format>
 #include <initializer_list>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -44,18 +45,18 @@ namespace nglab
             PACL pAcl = nullptr;
 
             // Use CSID helper to obtain the current user's SID
-            PSID pUserSid = nullptr;
- 
+            // The CSID owns the SID, it must live until the SID is copied below
+            std::optional<CSID> userSid;
             try
             {
-            CSID                userSid = CSID::getUser();
-            pUserSid = userSid.psid();
+                userSid.emplace(CSID::getUser());
             }
             catch (const std::exception &e)
             {
                 log.error("CSID::getUser failed: {}", e.what());
                 throw;
             }
+            PSID pUserSid = userSid->psid();
 
             if (!pUserSid)
             {
