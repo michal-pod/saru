@@ -17,6 +17,7 @@
 */
 #pragma once
 #include <format>
+#include <string>
 
 #include "stdatl.h"
 #include "config.h"
@@ -132,8 +133,23 @@ public:
             return;
 
         LPCSTR pData = (LPCSTR)::LockResource(hData);
+        const DWORD size = ::SizeofResource(_Module.GetResourceInstance(), hRes);
+        if (!pData || size == 0)
+            return;
 
-        m_edit.SetWindowText(pData);
+        // RCDATA resources are not NUL terminated. The edit control breaks lines only on CRLF,
+        // while the files may have LF line endings depending on the checkout.
+        std::string text;
+        text.reserve(size + size / 32);
+        for (DWORD i = 0; i < size; ++i)
+        {
+            if (pData[i] == '\n' && (i == 0 || pData[i - 1] != '\r'))
+            {
+                text += '\r';
+            }
+            text += pData[i];
+        }
+        m_edit.SetWindowText(text.c_str());
     }
 
     LRESULT OnCloseCmd(WORD, WORD wID, HWND, BOOL &)
