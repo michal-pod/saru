@@ -121,6 +121,10 @@ namespace nglab
             // Replies waiting for the pending write to complete
             std::deque<secure_vector<uint8_t>> m_writeQueue;
             bool m_writePending{false};
+            // Set only after ERROR_IO_PENDING: OVERLAPPED::Internal stays STATUS_PENDING when a call
+            // fails immediately, so HasOverlappedIoCompleted cannot tell whether an operation runs
+            bool m_connectPending{false};
+            bool m_readPending{false};
             std::mutex m_writeMutex;
         };
     }

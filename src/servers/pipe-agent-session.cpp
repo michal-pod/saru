@@ -18,10 +18,10 @@
 #include "pipe-agent-session.h"
 
 #include <format>
-#include <initializer_list>
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 #include <windows.h>
 
@@ -147,6 +147,7 @@ namespace nglab
             DWORD dwError = GetLastError();
             if (!bConnected && dwError == ERROR_IO_PENDING)
             {
+                m_connectPending = true;
                 log.debug("Waiting for client to connect...");
             }
             else if (!bConnected && dwError == ERROR_PIPE_CONNECTED)
@@ -177,12 +178,17 @@ namespace nglab
             if (m_hPipe && m_hPipe != INVALID_HANDLE_VALUE)
             {
                 // The kernel may still write to the OVERLAPPED structures and buffers of pending
-                // operations, wait for the cancellation before they are released. Only pending
-                // ones are waited for, the event of a completed operation is never set again.
+                // operations, wait for the cancellation before they are released. Only operations
+                // known to be pending are waited for, waiting for any other would never return.
                 CancelIoEx(m_hPipe, nullptr);
-                for (OVERLAPPED *ov : {&m_ovConnect, &m_ovRead, &m_ovWrite})
+                const std::pair<bool, OVERLAPPED *> operations[] = {
+                    {m_connectPending, &m_ovConnect},
+                    {m_readPending, &m_ovRead},
+                    {m_writePending, &m_ovWrite},
+                };
+                for (const auto &[pending, ov] : operations)
                 {
-                    if (!HasOverlappedIoCompleted(ov))
+                    if (pending)
                     {
                         DWORD dwTransferred = 0;
                         GetOverlappedResult(m_hPipe, ov, &dwTransferred, TRUE);
@@ -288,12 +294,14 @@ namespace nglab
             DWORD dwBytesRead = 0;
             if (!ReadFile(m_hPipe, m_readBuffer.data(), static_cast<DWORD>(m_readBuffer.size()), &dwBytesRead, &m_ovRead))
             {
-                if (GetLastError() != ERROR_IO_PENDING)
+                const DWORD dwError = GetLastError();
+                if (dwError != ERROR_IO_PENDING)
                 {
                     // Without a pending read the session would never get another event
-                    log.error("ReadFile failed, error: {}", GetLastError());
+                    log.error("ReadFile failed, error: {}", dwError);
                     return false;
                 }
+                m_readPending = true;
             }
             return true;
         }
@@ -327,7 +335,12 @@ namespace nglab
         {
             // Handle connect event
             DWORD dwDummy;
-            if (GetOverlappedResult(m_hPipe, &m_ovConnect, &dwDummy, FALSE))
+            const BOOL bCompleted = GetOverlappedResult(m_hPipe, &m_ovConnect, &dwDummy, FALSE);
+            if (bCompleted || GetLastError() != ERROR_IO_INCOMPLETE)
+            {
+                m_connectPending = false;
+            }
+            if (bCompleted)
             {
                 ResetEvent(m_hEventConnect);
                 getClientInfo();
@@ -349,7 +362,12 @@ namespace nglab
         {
             log.vdebug("Read event for client PID={}", clientInfo.ClientPid);
             DWORD dwBytesRead = 0;
-            if (GetOverlappedResult(m_hPipe, &m_ovRead, &dwBytesRead, FALSE))
+            const BOOL bCompleted = GetOverlappedResult(m_hPipe, &m_ovRead, &dwBytesRead, FALSE);
+            if (bCompleted || GetLastError() != ERROR_IO_INCOMPLETE)
+            {
+                m_readPending = false;
+            }
+            if (bCompleted)
             {
                 log.vdebug("Read {} bytes from client PID={}", dwBytesRead, clientInfo.ClientPid);
                 if (dwBytesRead > 0)
@@ -370,7 +388,7 @@ namespace nglab
                     log.debug("Client PID={} disconnected (pipe broken)", clientInfo.ClientPid);
                     return false;
                 }
-                else if (dwError != ERROR_IO_PENDING)
+                else if (dwError != ERROR_IO_INCOMPLETE)
                 {
                     log.error("GetOverlappedResult failed for client PID={} with error: {}", clientInfo.ClientPid, dwError);
                     return false;
@@ -391,7 +409,14 @@ namespace nglab
             }
 
             DWORD dwBytesWritten = 0;
-            if (GetOverlappedResult(m_hPipe, &m_ovWrite, &dwBytesWritten, FALSE))
+            const BOOL bCompleted = GetOverlappedResult(m_hPipe, &m_ovWrite, &dwBytesWritten, FALSE);
+            if (!bCompleted && GetLastError() == ERROR_IO_INCOMPLETE)
+            {
+                return true;
+            }
+            // The write is over either way, the destructor must not wait for it
+            m_writePending = false;
+            if (bCompleted)
             {
                 ResetEvent(m_hEventWrite);
                 log.vdebug("Wrote {} bytes to client PID={}", dwBytesWritten, clientInfo.ClientPid);
@@ -403,7 +428,6 @@ namespace nglab
 
                 memset(m_writeBuffer.data(), 0x42, m_writeBuffer.size());
                 m_writeBuffer.clear();
-                m_writePending = false;
                 return startWrite();
             }
             else
