@@ -56,6 +56,52 @@ DWORD WINAPI input_reader_thread(LPVOID lpParam)
     return 0;
 }
 
+/*
+ * Write the whole buffer, a pipe may accept only a part of it.
+ *
+ * A handle opened with FILE_FLAG_OVERLAPPED must be written with an OVERLAPPED
+ * structure, otherwise the completion cannot be told apart from the pending read
+ * on the same handle. Pass NULL for handles opened without it.
+ */
+BOOL write_all(HANDLE hFile, const char *pData, DWORD dwLength, OVERLAPPED *pOverlapped)
+{
+    while (dwLength > 0)
+    {
+        DWORD dwWritten = 0;
+        if (pOverlapped)
+        {
+            HANDLE hEvent = pOverlapped->hEvent;
+            ZeroMemory(pOverlapped, sizeof(OVERLAPPED));
+            pOverlapped->hEvent = hEvent;
+            ResetEvent(hEvent);
+            if (!WriteFile(hFile, pData, dwLength, NULL, pOverlapped))
+            {
+                if (GetLastError() != ERROR_IO_PENDING)
+                {
+                    return FALSE;
+                }
+            }
+            if (!GetOverlappedResult(hFile, pOverlapped, &dwWritten, TRUE))
+            {
+                return FALSE;
+            }
+        }
+        else if (!WriteFile(hFile, pData, dwLength, &dwWritten, NULL))
+        {
+            return FALSE;
+        }
+
+        if (dwWritten == 0)
+        {
+            SetLastError(ERROR_WRITE_FAULT);
+            return FALSE;
+        }
+        pData += dwWritten;
+        dwLength -= dwWritten;
+    }
+    return TRUE;
+}
+
 BOOL verify_client_process(HANDLE hPipe)
 {
     ULONG ulClientProcessId;
@@ -94,9 +140,15 @@ BOOL verify_client_process(HANDLE hPipe)
         winTrustData.dwProvFlags = WTD_REVOCATION_CHECK_NONE;
 
         lStatus = WinVerifyTrust(NULL, &wvtPolicyGUID, &winTrustData);
+
+        /* Release the state data allocated by WTD_STATEACTION_VERIFY */
+        winTrustData.dwStateAction = WTD_STATEACTION_CLOSE;
+        WinVerifyTrust(NULL, &wvtPolicyGUID, &winTrustData);
+
         if (lStatus != ERROR_SUCCESS)
         {
             fprintf(stderr, "Failed to verify process signature. Error: %ld\n", lStatus);
+            CloseHandle(hClientProcess);
             return FALSE;
         }
 
@@ -164,12 +216,14 @@ int main()
     /* Initialize OVERLAPPED structures and events */
     OVERLAPPED ovIORead = {0};
     OVERLAPPED ovPipeRead = {0};
+    OVERLAPPED ovPipeWrite = {0};
 
     HANDLE hEventIORead = CreateEvent(NULL, TRUE, FALSE, NULL);
     HANDLE hEventPipeRead = CreateEvent(NULL, TRUE, FALSE, NULL);
+    HANDLE hEventPipeWrite = CreateEvent(NULL, TRUE, FALSE, NULL);
     hTerminationEvent = CreateEvent(NULL, TRUE, FALSE, NULL);
 
-    if (hEventIORead == NULL || hEventPipeRead == NULL || hTerminationEvent == NULL || hEventIORead == INVALID_HANDLE_VALUE || hEventPipeRead == INVALID_HANDLE_VALUE || hTerminationEvent == INVALID_HANDLE_VALUE)
+    if (hEventIORead == NULL || hEventPipeRead == NULL || hEventPipeWrite == NULL || hTerminationEvent == NULL)
     {
         fprintf(stderr, "Failed to create events. Error: %lu\n", GetLastError());
         CloseHandle(hAgent);
@@ -178,6 +232,7 @@ int main()
 
     ovIORead.hEvent = hEventIORead;
     ovPipeRead.hEvent = hEventPipeRead;
+    ovPipeWrite.hEvent = hEventPipeWrite;
 
     HANDLE hEvents[3] = {
         hEventIORead,
@@ -224,7 +279,6 @@ int main()
     {
         DWORD dwWait = WaitForMultipleObjects(3, hEvents, FALSE, INFINITE);
         DWORD dwBytesTransferred;
-        DWORD dwBytesWritten;
         switch (dwWait)
         {
         case WAIT_OBJECT_0:
@@ -235,7 +289,14 @@ int main()
                 continue;
             }
 
-            if (!WriteFile(hAgent, bIO, dwBytesTransferred, &dwBytesWritten, NULL))
+            if (dwBytesTransferred == 0)
+            {
+                fprintf(stderr, "EOF on Stdin detected. Exiting.\n");
+                bContinueLoop = FALSE;
+                continue;
+            }
+
+            if (!write_all(hAgent, bIO, dwBytesTransferred, &ovPipeWrite))
             {
                 fprintf(stderr, "WriteFile to Agent failed. Error: %lu\n", GetLastError());
                 bContinueLoop = FALSE;
@@ -254,7 +315,7 @@ int main()
                     bContinueLoop = FALSE;
                     continue;
                 }
-                if (!WriteFile(hStdout, bPipe, dwBytesTransferred, &dwBytesWritten, NULL))
+                if (!write_all(hStdout, bPipe, dwBytesTransferred, NULL))
                 {
                     fprintf(stderr, "WriteFile to Stdout failed. Error: %lu\n", GetLastError());
                     bContinueLoop = FALSE;
@@ -295,6 +356,7 @@ int main()
 
     CloseHandle(hEventIORead);
     CloseHandle(hEventPipeRead);
+    CloseHandle(hEventPipeWrite);
     CloseHandle(hInputThread);
     CloseHandle(hAgent);
 
