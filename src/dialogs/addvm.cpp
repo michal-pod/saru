@@ -98,7 +98,7 @@ LRESULT CAddVMDialog::OnSomethingChanged(WORD, WORD, HWND, BOOL &)
 
     for (auto ch : vmNameStr)
     {
-        if (!(isalnum(ch) || ch == '-' || ch == ' ') && isValid)
+        if (!(isalnum(static_cast<unsigned char>(ch)) || ch == '-' || ch == ' ') && isValid)
         {
             validationMessage = "VM Name can only contain alphanumeric characters, spaces, or hyphens.";
             isValid = false;
@@ -139,7 +139,7 @@ LRESULT CAddVMDialog::OnSomethingChanged(WORD, WORD, HWND, BOOL &)
     {
         m_validationStatus.SetWindowText("");
         m_guid = vmGuidStr;
-        std::transform(m_guid.begin(), m_guid.end(), m_guid.begin(), [](unsigned char c) { return std::toupper(c); });
+        std::transform(m_guid.begin(), m_guid.end(), m_guid.begin(), [](unsigned char c) { return static_cast<char>(std::toupper(c)); });
     }
     else
     {

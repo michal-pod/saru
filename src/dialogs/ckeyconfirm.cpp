@@ -142,19 +142,6 @@ LRESULT CKeyConfirm::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL 
 
     initTimeout();
 
-    CRegKey key;
-    if (key.Open(HKEY_CURRENT_USER, _T(SARU_KEY_ROOT)) == ERROR_SUCCESS)
-    {
-        DWORD timeout = 0;
-        if (key.QueryDWORDValue(_T("AutoDecline"), timeout) == ERROR_SUCCESS && timeout > 0)
-        {
-            m_timer = static_cast<int>(timeout);
-            log.debug("CKeyConfirm dialog will timeout in {} seconds", m_timer);
-            updateDenyButton();
-            SetTimer(IDT_TIMEOUT_CHECK, 1000);
-        }
-    }
-
     initResourceIcons({
         {IDC_ICON_KEY, IDI_PAGE_WHITE_TEXT, 16},
         {IDC_ICON_FINGERPRINT, IDI_KEY, 16},

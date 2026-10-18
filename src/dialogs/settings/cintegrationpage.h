@@ -16,6 +16,7 @@
  along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
 #pragma once
+#include <string>
 #include <libssha/utils/logger.h>
 
 #include "stdatl.h"
@@ -160,7 +161,9 @@ public:
             {
                 TCHAR exePath[MAX_PATH];
                 GetModuleFileName(NULL, exePath, MAX_PATH);
-                key.SetStringValue("SARU", exePath);
+                // Quoted, otherwise a path with spaces is resolved piece by piece (C:\Program.exe first)
+                const std::string command = std::string("\"") + exePath + "\"";
+                key.SetStringValue("SARU", command.c_str());
             }
             else
             {
