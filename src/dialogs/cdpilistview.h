@@ -44,6 +44,28 @@ namespace nglab::saru
             updateColumns();
         }
 
+        // A report view can end up scrolled above its first item (top index -1), seen after
+        // resizing columns while scroll bars appear and disappear. That leaves an empty row which
+        // cannot be selected; scroll the first item back below the header.
+        void ensureValidTopIndex()
+        {
+            if (GetItemCount() == 0 || GetTopIndex() >= 0)
+                return;
+
+            RECT item{};
+            if (!GetItemRect(0, &item, LVIR_BOUNDS))
+                return;
+
+            RECT header{};
+            CHeaderCtrl headerCtrl = GetHeader();
+            if (headerCtrl.IsWindow())
+                headerCtrl.GetWindowRect(&header);
+
+            const int offset = item.top - (header.bottom - header.top);
+            if (offset > 0)
+                Scroll(SIZE{0, offset});
+        }
+
     private:
         enum { WM_REFRESH_COLUMNS = WM_APP + 0x102 };
 
@@ -110,6 +132,7 @@ namespace nglab::saru
                 if (refreshScrollRange || GetColumnWidth(static_cast<int>(index)) != width)
                     SetColumnWidth(static_cast<int>(index), width);
             }
+            ensureValidTopIndex();
             m_updating = false;
         }
 

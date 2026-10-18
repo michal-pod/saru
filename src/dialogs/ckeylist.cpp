@@ -730,6 +730,7 @@ void CKeyList::removeKeyFromList(const std::string &fingerprint)
         if (fingerprint == szText)
         {
             m_keyList.DeleteItem(i);
+            m_keyList.ensureValidTopIndex();
             break;
         }
     }
