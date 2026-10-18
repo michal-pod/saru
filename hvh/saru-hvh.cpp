@@ -125,7 +125,10 @@ int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int n
 
     // założenia: m_spSvc jest IWbemServices (po ConnectServer i CoSetProxyBlanket)
 
-    CComBSTR queryVssd(L"SELECT ElementName, InstanceID FROM Msvm_VirtualSystemSettingData");
+    // Checkpoints have their own settings (Microsoft:Hyper-V:Snapshot:Realized) pointing to the same
+    // virtual machine; their names would overwrite the VM name. The type string is not localized.
+    CComBSTR queryVssd(L"SELECT ElementName, InstanceID FROM Msvm_VirtualSystemSettingData "
+                       L"WHERE VirtualSystemType = 'Microsoft:Hyper-V:System:Realized'");
     CComPtr<IEnumWbemClassObject> spEnumVssd;
     hr = pSvc->ExecQuery(CComBSTR(L"WQL"), queryVssd,
                                     WBEM_FLAG_FORWARD_ONLY | WBEM_FLAG_RETURN_IMMEDIATELY, NULL, &spEnumVssd);
