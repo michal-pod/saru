@@ -1,3 +1,17 @@
+Version 26.10:
+
+  * Show the originating process for SSH agent requests, with a configurable
+    list of intermediary executables to skip.
+  * Support Per-Monitor V2 DPI scaling in all windows and icons.
+  * Fix crashes when a client disconnects while a confirmation window is open.
+  * Keep the agent running after client errors and recover listeners after
+    resume from sleep.
+  * Fix truncated replies and lost events in Hyper-V sessions.
+  * Honor the Pageant compatibility setting.
+  * Align the agent protocol with RFC 9987 and OpenSSH destination
+    constraints.
+  * Fix smaller issues in settings, dialogs and helper programs.
+
 Version 26.08:
 
   * Rename SKYM to SARU.

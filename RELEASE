@@ -1,26 +1,36 @@
-SARU 26.08
+SARU 26.10
 
-SARU 26.08 is the first release under the new name.  It succeeds SKYM and
-existing SKYM installations can be upgraded directly to SARU.
+SARU 26.10 makes key-use prompts more informative by identifying the
+application from which an SSH agent request originated, adds full support
+for high-DPI displays and makes the agent considerably more reliable.
 
 What is new
 
-  * The application, its helpers, installer and documentation are now named
-    SARU - SSH Agent Replacement Utility.
+  * Key confirmation and selection windows can now show which application
+    originated a request, even when it reaches SARU through an intermediary
+    such as Windows OpenSSH, the Windows command processor or PuTTY Plink.
+    SARU follows the process hierarchy and skips known intermediary executables;
+    the default list is detected from installed SSH clients and can be reviewed
+    or changed in the notification settings.  Originating-process information
+    can also be disabled there.
 
-  * RSA keys work more reliably with SSH servers and clients that use current
-    RSA signing methods as well as older RSA-based setups.
+  * Windows, icons and the tray menu scale correctly on high-DPI displays,
+    including setups with several monitors using different scaling.
 
-  * Key-use confirmation, locking and destination restrictions behave more
-    consistently.  In particular, locking the agent prevents a pending request
-    from using a key afterwards.
+  * SARU no longer closes unexpectedly when an SSH client disconnects while a
+    confirmation or key selection window is open; such windows are now closed
+    automatically.
 
-  * Communication with supported SSH clients is more robust, including safer
-    handling of requests received through Pageant and the Windows SSH agent.
+  * The agent keeps running after errors caused by a single client and
+    recovers its Windows SSH agent and Hyper-V listeners, for example after
+    resume from sleep.
 
-  * Key lists and confirmation windows stay in sync with the current state of
-    the agent, making changes to loaded keys easier to follow.
+  * Long replies to Hyper-V virtual machines are no longer truncated.
 
-  * Every executable and the Windows installer are now signed with a trusted
-    code-signing certificate.  Detached GPG signatures for the MSI and ZIP
-    packages continue to be provided alongside the release files.
+  * The Pageant compatibility option in the settings now takes effect.
+
+  * Agent protocol handling follows RFC 9987, and destination-restricted keys
+    are checked the same way as in OpenSSH.
+
+  * Several smaller fixes in the settings, dialogs, the Hyper-V helper and the
+    WSL bridge.

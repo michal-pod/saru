@@ -1,5 +1,5 @@
 project('SARU', ['c', 'cpp'],
-  version: '26.08',
+  version: '26.10',
   default_options: ['buildtype=release', 'warning_level=3', 'cpp_std=c++20'],
   license: 'GPL-3+',
   meson_version: '>=1.4'
